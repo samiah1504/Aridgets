@@ -9,7 +9,13 @@ const NAV = [
   { href: "/admin/leads", label: "Leads" },
 ];
 
-export default function AdminNav({ email }: { email: string }) {
+export default function AdminNav({
+  email,
+  children,
+}: {
+  email: string;
+  children?: React.ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -44,6 +50,7 @@ export default function AdminNav({ email }: { email: string }) {
         <span className="text-xs text-gray-400 hidden sm:block shrink-0">
           {email}
         </span>
+        {children}
         <button
           onClick={signOut}
           className="text-xs text-gray-400 hover:text-white transition shrink-0"

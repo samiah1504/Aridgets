@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { isValidNGPhone, normaliseNGPhone } from "@/lib/utils/phone";
 import { sendCAPIEvent } from "@/lib/capi";
+import { sendPushToAll } from "@/lib/push";
 import type { Database } from "@/types/database";
 
 type LeadInsert = Database["public"]["Tables"]["leads"]["Insert"];
@@ -139,6 +140,13 @@ export async function POST(request: NextRequest) {
       contentName: pixelData.name,
     }).catch((err: unknown) => console.error("CAPI Lead:", err));
   }
+
+  // Push notification to admin devices (non-blocking)
+  sendPushToAll({
+    title: `New order: ${result.order_number}`,
+    body: `${result.name} — ₦${result.total.toLocaleString("en-NG")}`,
+    url: "/admin/leads",
+  }).catch((err: unknown) => console.error("Push notification:", err));
 
   return NextResponse.json(result, { status: 201 });
 }
