@@ -28,6 +28,124 @@ const FONTS = ["Inter", "Poppins", "Lato", "Montserrat", "Nunito", "Raleway"];
 const TABS = ["Basic", "Theme", "Content", "Sections", "Tracking"] as const;
 type Tab = (typeof TABS)[number];
 
+// ─── Reusable field components (module-level — MUST stay outside ProductForm)
+// Defining these inside the render function gives them new references on every
+// render, which makes React unmount + remount inputs and loses keyboard focus.
+
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      {children}
+      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+function FormInput({
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+}: {
+  value: string | number;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+    />
+  );
+}
+
+function FormTextarea({
+  value,
+  onChange,
+  rows = 3,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  rows?: number;
+  placeholder?: string;
+}) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      rows={rows}
+      placeholder={placeholder}
+      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition resize-none"
+    />
+  );
+}
+
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-9 h-9 rounded border border-gray-200 cursor-pointer p-0.5"
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+        />
+      </div>
+    </div>
+  );
+}
+
+function StringList({ value, onChange, placeholder }: { value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
+  return (
+    <div className="space-y-2">
+      {value.map((item, i) => (
+        <div key={i} className="flex gap-2">
+          <input
+            type="text"
+            value={item}
+            onChange={(e) => {
+              const next = [...value];
+              next[i] = e.target.value;
+              onChange(next);
+            }}
+            placeholder={placeholder}
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+          />
+          <button
+            type="button"
+            onClick={() => onChange(value.filter((_, j) => j !== i))}
+            className="text-gray-300 hover:text-red-400 transition text-lg leading-none"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...value, ""])}
+        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
+      >
+        + Add item
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface Props {
   product: ProductRow;
 }
@@ -96,140 +214,16 @@ export default function ProductForm({ product: initial }: Props) {
     setSaving(false);
   }
 
-  // ─── reusable field components ───────────────────────────────────────────
-
-  function Field({
-    label,
-    children,
-    hint,
-  }: {
-    label: string;
-    children: React.ReactNode;
-    hint?: string;
-  }) {
-    return (
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-        {children}
-        {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
-      </div>
-    );
-  }
-
-  function Input({
-    value,
-    onChange,
-    type = "text",
-    placeholder,
-  }: {
-    value: string | number;
-    onChange: (v: string) => void;
-    type?: string;
-    placeholder?: string;
-  }) {
-    return (
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
-      />
-    );
-  }
-
-  function Textarea({
-    value,
-    onChange,
-    rows = 3,
-    placeholder,
-  }: {
-    value: string;
-    onChange: (v: string) => void;
-    rows?: number;
-    placeholder?: string;
-  }) {
-    return (
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={rows}
-        placeholder={placeholder}
-        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition resize-none"
-      />
-    );
-  }
-
-  function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-    return (
-      <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-9 h-9 rounded border border-gray-200 cursor-pointer p-0.5"
-          />
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // ─── array list editors ──────────────────────────────────────────────────
-
-  function StringList({ value, onChange, placeholder }: { value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
-    return (
-      <div className="space-y-2">
-        {value.map((item, i) => (
-          <div key={i} className="flex gap-2">
-            <input
-              type="text"
-              value={item}
-              onChange={(e) => {
-                const next = [...value];
-                next[i] = e.target.value;
-                onChange(next);
-              }}
-              placeholder={placeholder}
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
-            />
-            <button
-              type="button"
-              onClick={() => onChange(value.filter((_, j) => j !== i))}
-              className="text-gray-300 hover:text-red-400 transition text-lg leading-none"
-            >
-              ×
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => onChange([...value, ""])}
-          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
-        >
-          + Add item
-        </button>
-      </div>
-    );
-  }
-
   // ─── tab content ─────────────────────────────────────────────────────────
 
   const tabContent: Record<Tab, React.ReactNode> = {
     Basic: (
       <div className="space-y-5">
         <Field label="Product name">
-          <Input value={product.name} onChange={(v) => setField("name", v)} />
+          <FormInput value={product.name} onChange={(v) => setField("name", v)} />
         </Field>
         <Field label="Slug" hint="Used in the URL: /p/your-slug">
-          <Input value={product.slug} onChange={(v) => setField("slug", v.toLowerCase().replace(/\s+/g, "-"))} />
+          <FormInput value={product.slug} onChange={(v) => setField("slug", v.toLowerCase().replace(/\s+/g, "-"))} />
         </Field>
         <Field label="Status">
           <select
@@ -244,14 +238,14 @@ export default function ProductForm({ product: initial }: Props) {
         </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Price (NGN)" hint="In naira, e.g. 15000">
-            <Input type="number" value={product.price} onChange={(v) => setField("price", Number(v))} />
+            <FormInput type="number" value={product.price} onChange={(v) => setField("price", Number(v))} />
           </Field>
           <Field label="Compare-at price">
-            <Input type="number" value={product.compare_at_price ?? ""} onChange={(v) => setField("compare_at_price", v ? Number(v) : null)} />
+            <FormInput type="number" value={product.compare_at_price ?? ""} onChange={(v) => setField("compare_at_price", v ? Number(v) : null)} />
           </Field>
         </div>
         <Field label="WhatsApp number" hint="Optional — for order confirmation messages">
-          <Input value={product.whatsapp_number ?? ""} onChange={(v) => setField("whatsapp_number", v || null)} placeholder="+2348012345678" />
+          <FormInput value={product.whatsapp_number ?? ""} onChange={(v) => setField("whatsapp_number", v || null)} placeholder="+2348012345678" />
         </Field>
         <label className="flex items-center gap-3 cursor-pointer select-none">
           <input
@@ -300,23 +294,23 @@ export default function ProductForm({ product: initial }: Props) {
           <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Hero</h3>
           <div className="space-y-4">
             <Field label="Announcement bar text">
-              <Input value={content.announcementBar ?? ""} onChange={(v) => setContent({ announcementBar: v })} placeholder="Pay on Delivery · Free Shipping" />
+              <FormInput value={content.announcementBar ?? ""} onChange={(v) => setContent({ announcementBar: v })} placeholder="Pay on Delivery · Free Shipping" />
             </Field>
             <Field label="Eyebrow (small text above headline)">
-              <Input value={content.eyebrow ?? ""} onChange={(v) => setContent({ eyebrow: v })} />
+              <FormInput value={content.eyebrow ?? ""} onChange={(v) => setContent({ eyebrow: v })} />
             </Field>
             <Field label="Headline">
-              <Textarea value={content.headline ?? ""} onChange={(v) => setContent({ headline: v })} rows={2} />
+              <FormTextarea value={content.headline ?? ""} onChange={(v) => setContent({ headline: v })} rows={2} />
             </Field>
             <Field label="Sub-headline">
-              <Textarea value={content.subhead ?? ""} onChange={(v) => setContent({ subhead: v })} />
+              <FormTextarea value={content.subhead ?? ""} onChange={(v) => setContent({ subhead: v })} />
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Star rating (1–5)">
-                <Input type="number" value={content.starRating ?? 5} onChange={(v) => setContent({ starRating: Number(v) })} />
+                <FormInput type="number" value={content.starRating ?? 5} onChange={(v) => setContent({ starRating: Number(v) })} />
               </Field>
               <Field label="CTA button text">
-                <Input value={content.ctaText ?? ""} onChange={(v) => setContent({ ctaText: v })} placeholder="Order Now" />
+                <FormInput value={content.ctaText ?? ""} onChange={(v) => setContent({ ctaText: v })} placeholder="Order Now" />
               </Field>
             </div>
             <Field label="Trust row items">
@@ -328,7 +322,7 @@ export default function ProductForm({ product: initial }: Props) {
         <section>
           <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Problem</h3>
           <Field label="Problem text">
-            <Textarea value={content.problemText ?? ""} onChange={(v) => setContent({ problemText: v })} rows={4} />
+            <FormTextarea value={content.problemText ?? ""} onChange={(v) => setContent({ problemText: v })} rows={4} />
           </Field>
         </section>
 
@@ -503,10 +497,10 @@ export default function ProductForm({ product: initial }: Props) {
           <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Urgency & Guarantee</h3>
           <div className="space-y-4">
             <Field label="Urgency text">
-              <Input value={content.urgencyText ?? ""} onChange={(v) => setContent({ urgencyText: v })} placeholder="Only 37 units left in stock..." />
+              <FormInput value={content.urgencyText ?? ""} onChange={(v) => setContent({ urgencyText: v })} placeholder="Only 37 units left in stock..." />
             </Field>
             <Field label="Guarantee text">
-              <Textarea value={content.guaranteeText ?? ""} onChange={(v) => setContent({ guaranteeText: v })} />
+              <FormTextarea value={content.guaranteeText ?? ""} onChange={(v) => setContent({ guaranteeText: v })} />
             </Field>
           </div>
         </section>
@@ -563,16 +557,16 @@ export default function ProductForm({ product: initial }: Props) {
           <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Order Form & Footer</h3>
           <div className="space-y-4">
             <Field label="Order form title">
-              <Input value={content.orderFormTitle ?? ""} onChange={(v) => setContent({ orderFormTitle: v })} />
+              <FormInput value={content.orderFormTitle ?? ""} onChange={(v) => setContent({ orderFormTitle: v })} />
             </Field>
             <Field label="Success headline">
-              <Input value={content.orderSuccessHeadline ?? ""} onChange={(v) => setContent({ orderSuccessHeadline: v })} />
+              <FormInput value={content.orderSuccessHeadline ?? ""} onChange={(v) => setContent({ orderSuccessHeadline: v })} />
             </Field>
             <Field label="Success message" hint="Use {total} to insert the order total">
-              <Textarea value={content.orderSuccessBody ?? ""} onChange={(v) => setContent({ orderSuccessBody: v })} />
+              <FormTextarea value={content.orderSuccessBody ?? ""} onChange={(v) => setContent({ orderSuccessBody: v })} />
             </Field>
             <Field label="Footer text">
-              <Input value={content.footerText ?? ""} onChange={(v) => setContent({ footerText: v })} />
+              <FormInput value={content.footerText ?? ""} onChange={(v) => setContent({ footerText: v })} />
             </Field>
           </div>
         </section>
@@ -607,7 +601,7 @@ export default function ProductForm({ product: initial }: Props) {
           Set your Meta Pixel ID and CAPI token to enable tracking. The token is stored securely and never sent to the browser.
         </p>
         <Field label="Meta Pixel ID">
-          <Input value={product.pixel_id ?? ""} onChange={(v) => setField("pixel_id", v || null)} placeholder="1234567890123456" />
+          <FormInput value={product.pixel_id ?? ""} onChange={(v) => setField("pixel_id", v || null)} placeholder="1234567890123456" />
         </Field>
         <Field label="CAPI Access Token" hint="Conversions API token from your Meta Events Manager">
           <input
@@ -619,7 +613,7 @@ export default function ProductForm({ product: initial }: Props) {
           />
         </Field>
         <Field label="Test event code" hint="From Meta Events Manager test events panel — remove when going live">
-          <Input value={product.capi_test_event_code ?? ""} onChange={(v) => setField("capi_test_event_code", v || null)} placeholder="TEST12345" />
+          <FormInput value={product.capi_test_event_code ?? ""} onChange={(v) => setField("capi_test_event_code", v || null)} placeholder="TEST12345" />
         </Field>
       </div>
     ),
