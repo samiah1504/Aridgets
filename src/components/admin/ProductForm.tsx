@@ -1,0 +1,669 @@
+"use client";
+
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { NIGERIAN_STATES } from "@/lib/constants/states";
+import type { Database } from "@/types/database";
+import type { ProductContent, ProductTheme, SectionConfig } from "@/types";
+
+type ProductRow = Database["public"]["Tables"]["products"]["Row"];
+
+const SECTION_LABELS: Record<string, string> = {
+  announcementBar: "Announcement Bar",
+  hero: "Hero",
+  problem: "Problem",
+  benefits: "Benefits",
+  mediaGallery: "Media Gallery",
+  howItWorks: "How It Works",
+  featuresSpecs: "Features & Specs",
+  socialProof: "Social Proof",
+  urgency: "Urgency",
+  guarantee: "Guarantee",
+  faq: "FAQ",
+  orderForm: "Order Form",
+};
+
+const FONTS = ["Inter", "Poppins", "Lato", "Montserrat", "Nunito", "Raleway"];
+
+const TABS = ["Basic", "Theme", "Content", "Sections", "Tracking"] as const;
+type Tab = (typeof TABS)[number];
+
+interface Props {
+  product: ProductRow;
+}
+
+export default function ProductForm({ product: initial }: Props) {
+  const [product, setProduct] = useState<ProductRow>(initial);
+  const [activeTab, setActiveTab] = useState<Tab>("Basic");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  const content = product.content as ProductContent;
+  const theme = product.theme as ProductTheme;
+  const sections = product.sections as SectionConfig[];
+
+  function setField<K extends keyof ProductRow>(key: K, value: ProductRow[K]) {
+    setProduct((p) => ({ ...p, [key]: value }));
+    setSaved(false);
+  }
+
+  function setContent(updates: Partial<ProductContent>) {
+    setProduct((p) => ({ ...p, content: { ...(p.content as ProductContent), ...updates } }));
+    setSaved(false);
+  }
+
+  function setTheme(updates: Partial<ProductTheme>) {
+    setProduct((p) => ({ ...p, theme: { ...(p.theme as ProductTheme), ...updates } }));
+    setSaved(false);
+  }
+
+  function toggleSection(key: string) {
+    const updated = sections.map((s) =>
+      s.key === key ? { ...s, enabled: !s.enabled } : s
+    );
+    setField("sections", updated);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setError("");
+    const supabase = createClient();
+    const { error: err } = await supabase
+      .from("products")
+      .update({
+        name: product.name,
+        slug: product.slug,
+        status: product.status,
+        price: product.price,
+        compare_at_price: product.compare_at_price,
+        whatsapp_number: product.whatsapp_number,
+        theme: product.theme,
+        content: product.content,
+        sections: product.sections,
+        pixel_id: product.pixel_id,
+        capi_access_token: product.capi_access_token,
+        capi_test_event_code: product.capi_test_event_code,
+      })
+      .eq("id", product.id);
+
+    if (err) {
+      setError(err.message);
+    } else {
+      setSaved(true);
+    }
+    setSaving(false);
+  }
+
+  // ─── reusable field components ───────────────────────────────────────────
+
+  function Field({
+    label,
+    children,
+    hint,
+  }: {
+    label: string;
+    children: React.ReactNode;
+    hint?: string;
+  }) {
+    return (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+        {children}
+        {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+      </div>
+    );
+  }
+
+  function Input({
+    value,
+    onChange,
+    type = "text",
+    placeholder,
+  }: {
+    value: string | number;
+    onChange: (v: string) => void;
+    type?: string;
+    placeholder?: string;
+  }) {
+    return (
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+      />
+    );
+  }
+
+  function Textarea({
+    value,
+    onChange,
+    rows = 3,
+    placeholder,
+  }: {
+    value: string;
+    onChange: (v: string) => void;
+    rows?: number;
+    placeholder?: string;
+  }) {
+    return (
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={rows}
+        placeholder={placeholder}
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition resize-none"
+      />
+    );
+  }
+
+  function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+    return (
+      <div>
+        <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-9 h-9 rounded border border-gray-200 cursor-pointer p-0.5"
+          />
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ─── array list editors ──────────────────────────────────────────────────
+
+  function StringList({ value, onChange, placeholder }: { value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
+    return (
+      <div className="space-y-2">
+        {value.map((item, i) => (
+          <div key={i} className="flex gap-2">
+            <input
+              type="text"
+              value={item}
+              onChange={(e) => {
+                const next = [...value];
+                next[i] = e.target.value;
+                onChange(next);
+              }}
+              placeholder={placeholder}
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+            />
+            <button
+              type="button"
+              onClick={() => onChange(value.filter((_, j) => j !== i))}
+              className="text-gray-300 hover:text-red-400 transition text-lg leading-none"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => onChange([...value, ""])}
+          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
+        >
+          + Add item
+        </button>
+      </div>
+    );
+  }
+
+  // ─── tab content ─────────────────────────────────────────────────────────
+
+  const tabContent: Record<Tab, React.ReactNode> = {
+    Basic: (
+      <div className="space-y-5">
+        <Field label="Product name">
+          <Input value={product.name} onChange={(v) => setField("name", v)} />
+        </Field>
+        <Field label="Slug" hint="Used in the URL: /p/your-slug">
+          <Input value={product.slug} onChange={(v) => setField("slug", v.toLowerCase().replace(/\s+/g, "-"))} />
+        </Field>
+        <Field label="Status">
+          <select
+            value={product.status}
+            onChange={(e) => setField("status", e.target.value as ProductRow["status"])}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+          >
+            <option value="draft">Draft</option>
+            <option value="live">Live</option>
+            <option value="archived">Archived</option>
+          </select>
+        </Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Price (NGN)" hint="In naira, e.g. 15000">
+            <Input type="number" value={product.price} onChange={(v) => setField("price", Number(v))} />
+          </Field>
+          <Field label="Compare-at price">
+            <Input type="number" value={product.compare_at_price ?? ""} onChange={(v) => setField("compare_at_price", v ? Number(v) : null)} />
+          </Field>
+        </div>
+        <Field label="WhatsApp number" hint="Optional — for order confirmation messages">
+          <Input value={product.whatsapp_number ?? ""} onChange={(v) => setField("whatsapp_number", v || null)} placeholder="+2348012345678" />
+        </Field>
+      </div>
+    ),
+
+    Theme: (
+      <div className="space-y-5">
+        <p className="text-sm text-gray-500">These colours style your sales page.</p>
+        <div className="grid grid-cols-2 gap-4">
+          <ColorField label="Primary colour" value={theme.primary} onChange={(v) => setTheme({ primary: v })} />
+          <ColorField label="Accent colour" value={theme.accent} onChange={(v) => setTheme({ accent: v })} />
+          <ColorField label="Background" value={theme.background} onChange={(v) => setTheme({ background: v })} />
+          <ColorField label="Text colour" value={theme.text} onChange={(v) => setTheme({ text: v })} />
+        </div>
+        <Field label="Font">
+          <select
+            value={theme.font}
+            onChange={(e) => setTheme({ font: e.target.value })}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+          >
+            {FONTS.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </Field>
+        <div
+          className="rounded-xl border-2 p-4 text-sm font-medium"
+          style={{ borderColor: theme.primary, backgroundColor: theme.background, color: theme.text }}
+        >
+          Preview — <span style={{ color: theme.primary }}>primary</span> and{" "}
+          <span style={{ color: theme.accent }}>accent</span> colours on this background.
+        </div>
+      </div>
+    ),
+
+    Content: (
+      <div className="space-y-6">
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Hero</h3>
+          <div className="space-y-4">
+            <Field label="Announcement bar text">
+              <Input value={content.announcementBar ?? ""} onChange={(v) => setContent({ announcementBar: v })} placeholder="Pay on Delivery · Free Shipping" />
+            </Field>
+            <Field label="Eyebrow (small text above headline)">
+              <Input value={content.eyebrow ?? ""} onChange={(v) => setContent({ eyebrow: v })} />
+            </Field>
+            <Field label="Headline">
+              <Textarea value={content.headline ?? ""} onChange={(v) => setContent({ headline: v })} rows={2} />
+            </Field>
+            <Field label="Sub-headline">
+              <Textarea value={content.subhead ?? ""} onChange={(v) => setContent({ subhead: v })} />
+            </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Star rating (1–5)">
+                <Input type="number" value={content.starRating ?? 5} onChange={(v) => setContent({ starRating: Number(v) })} />
+              </Field>
+              <Field label="CTA button text">
+                <Input value={content.ctaText ?? ""} onChange={(v) => setContent({ ctaText: v })} placeholder="Order Now" />
+              </Field>
+            </div>
+            <Field label="Trust row items">
+              <StringList value={content.trustRow ?? []} onChange={(v) => setContent({ trustRow: v })} placeholder="e.g. Pay on Delivery" />
+            </Field>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Problem</h3>
+          <Field label="Problem text">
+            <Textarea value={content.problemText ?? ""} onChange={(v) => setContent({ problemText: v })} rows={4} />
+          </Field>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Benefits</h3>
+          <div className="space-y-3">
+            {(content.benefits ?? []).map((b, i) => (
+              <div key={i} className="flex gap-2 items-start p-3 bg-gray-50 rounded-lg">
+                <input
+                  type="text"
+                  value={b.icon ?? "✓"}
+                  onChange={(e) => {
+                    const next = [...(content.benefits ?? [])];
+                    next[i] = { ...next[i], icon: e.target.value };
+                    setContent({ benefits: next });
+                  }}
+                  className="w-10 border border-gray-200 rounded px-2 py-1.5 text-sm text-center outline-none"
+                />
+                <input
+                  type="text"
+                  value={b.text}
+                  onChange={(e) => {
+                    const next = [...(content.benefits ?? [])];
+                    next[i] = { ...next[i], text: e.target.value };
+                    setContent({ benefits: next });
+                  }}
+                  className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setContent({ benefits: (content.benefits ?? []).filter((_, j) => j !== i) })}
+                  className="text-gray-300 hover:text-red-400 transition text-xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setContent({ benefits: [...(content.benefits ?? []), { icon: "✓", text: "" }] })}
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
+            >
+              + Add benefit
+            </button>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">How It Works</h3>
+          <div className="space-y-3">
+            {(content.howItWorksSteps ?? []).map((step, i) => (
+              <div key={i} className="p-3 bg-gray-50 rounded-lg space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={step.title}
+                    onChange={(e) => {
+                      const next = [...(content.howItWorksSteps ?? [])];
+                      next[i] = { ...next[i], title: e.target.value };
+                      setContent({ howItWorksSteps: next });
+                    }}
+                    placeholder="Step title"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setContent({ howItWorksSteps: (content.howItWorksSteps ?? []).filter((_, j) => j !== i) })}
+                    className="text-gray-300 hover:text-red-400 transition text-xl leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+                <textarea
+                  value={step.description}
+                  onChange={(e) => {
+                    const next = [...(content.howItWorksSteps ?? [])];
+                    next[i] = { ...next[i], description: e.target.value };
+                    setContent({ howItWorksSteps: next });
+                  }}
+                  rows={2}
+                  placeholder="Step description"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition resize-none"
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setContent({ howItWorksSteps: [...(content.howItWorksSteps ?? []), { title: "", description: "" }] })}
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
+            >
+              + Add step
+            </button>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Features & Specs</h3>
+          <StringList value={content.featuresSpecs ?? []} onChange={(v) => setContent({ featuresSpecs: v })} placeholder="e.g. Material: Premium neoprene" />
+        </section>
+
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Testimonials</h3>
+          <div className="space-y-3">
+            {(content.testimonials ?? []).map((t, i) => (
+              <div key={i} className="p-3 bg-gray-50 rounded-lg space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={t.name}
+                    onChange={(e) => {
+                      const next = [...(content.testimonials ?? [])];
+                      next[i] = { ...next[i], name: e.target.value };
+                      setContent({ testimonials: next });
+                    }}
+                    placeholder="Name"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+                  />
+                  <input
+                    type="text"
+                    value={t.location}
+                    onChange={(e) => {
+                      const next = [...(content.testimonials ?? [])];
+                      next[i] = { ...next[i], location: e.target.value };
+                      setContent({ testimonials: next });
+                    }}
+                    placeholder="Location"
+                    className="w-28 border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+                  />
+                  <select
+                    value={t.rating}
+                    onChange={(e) => {
+                      const next = [...(content.testimonials ?? [])];
+                      next[i] = { ...next[i], rating: Number(e.target.value) };
+                      setContent({ testimonials: next });
+                    }}
+                    className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+                  >
+                    {[5,4,3,2,1].map((n) => <option key={n} value={n}>{n}★</option>)}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setContent({ testimonials: (content.testimonials ?? []).filter((_, j) => j !== i) })}
+                    className="text-gray-300 hover:text-red-400 transition text-xl leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+                <textarea
+                  value={t.text}
+                  onChange={(e) => {
+                    const next = [...(content.testimonials ?? [])];
+                    next[i] = { ...next[i], text: e.target.value };
+                    setContent({ testimonials: next });
+                  }}
+                  rows={2}
+                  placeholder="Review text"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition resize-none"
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setContent({ testimonials: [...(content.testimonials ?? []), { name: "", location: "", rating: 5, text: "" }] })}
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
+            >
+              + Add testimonial
+            </button>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Urgency & Guarantee</h3>
+          <div className="space-y-4">
+            <Field label="Urgency text">
+              <Input value={content.urgencyText ?? ""} onChange={(v) => setContent({ urgencyText: v })} placeholder="Only 37 units left in stock..." />
+            </Field>
+            <Field label="Guarantee text">
+              <Textarea value={content.guaranteeText ?? ""} onChange={(v) => setContent({ guaranteeText: v })} />
+            </Field>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">FAQ</h3>
+          <div className="space-y-3">
+            {(content.faq ?? []).map((item, i) => (
+              <div key={i} className="p-3 bg-gray-50 rounded-lg space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={item.question}
+                    onChange={(e) => {
+                      const next = [...(content.faq ?? [])];
+                      next[i] = { ...next[i], question: e.target.value };
+                      setContent({ faq: next });
+                    }}
+                    placeholder="Question"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setContent({ faq: (content.faq ?? []).filter((_, j) => j !== i) })}
+                    className="text-gray-300 hover:text-red-400 transition text-xl leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+                <textarea
+                  value={item.answer}
+                  onChange={(e) => {
+                    const next = [...(content.faq ?? [])];
+                    next[i] = { ...next[i], answer: e.target.value };
+                    setContent({ faq: next });
+                  }}
+                  rows={2}
+                  placeholder="Answer"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition resize-none"
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setContent({ faq: [...(content.faq ?? []), { question: "", answer: "" }] })}
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
+            >
+              + Add FAQ
+            </button>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Order Form & Footer</h3>
+          <div className="space-y-4">
+            <Field label="Order form title">
+              <Input value={content.orderFormTitle ?? ""} onChange={(v) => setContent({ orderFormTitle: v })} />
+            </Field>
+            <Field label="Success headline">
+              <Input value={content.orderSuccessHeadline ?? ""} onChange={(v) => setContent({ orderSuccessHeadline: v })} />
+            </Field>
+            <Field label="Success message" hint="Use {total} to insert the order total">
+              <Textarea value={content.orderSuccessBody ?? ""} onChange={(v) => setContent({ orderSuccessBody: v })} />
+            </Field>
+            <Field label="Footer text">
+              <Input value={content.footerText ?? ""} onChange={(v) => setContent({ footerText: v })} />
+            </Field>
+          </div>
+        </section>
+      </div>
+    ),
+
+    Sections: (
+      <div className="space-y-2">
+        <p className="text-sm text-gray-500 mb-4">Toggle which sections appear on the sales page.</p>
+        {sections.map((s) => (
+          <label
+            key={s.key}
+            className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 cursor-pointer hover:border-indigo-200 transition"
+          >
+            <span className="text-sm font-medium">{SECTION_LABELS[s.key] ?? s.key}</span>
+            <div
+              onClick={() => toggleSection(s.key)}
+              className={`relative w-10 h-5 rounded-full transition-colors ${s.enabled ? "bg-indigo-600" : "bg-gray-200"}`}
+            >
+              <div
+                className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${s.enabled ? "translate-x-5" : "translate-x-0.5"}`}
+              />
+            </div>
+          </label>
+        ))}
+      </div>
+    ),
+
+    Tracking: (
+      <div className="space-y-5">
+        <p className="text-sm text-gray-500">
+          Set your Meta Pixel ID and CAPI token to enable tracking. The token is stored securely and never sent to the browser.
+        </p>
+        <Field label="Meta Pixel ID">
+          <Input value={product.pixel_id ?? ""} onChange={(v) => setField("pixel_id", v || null)} placeholder="1234567890123456" />
+        </Field>
+        <Field label="CAPI Access Token" hint="Conversions API token from your Meta Events Manager">
+          <input
+            type="password"
+            value={product.capi_access_token ?? ""}
+            onChange={(e) => setField("capi_access_token", e.target.value || null)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition font-mono"
+            autoComplete="off"
+          />
+        </Field>
+        <Field label="Test event code" hint="From Meta Events Manager test events panel — remove when going live">
+          <Input value={product.capi_test_event_code ?? ""} onChange={(v) => setField("capi_test_event_code", v || null)} placeholder="TEST12345" />
+        </Field>
+      </div>
+    ),
+  };
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6 gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">{product.name}</h1>
+          <p className="text-xs text-gray-400 mt-0.5">/p/{product.slug}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {saved && <span className="text-xs text-green-600 font-medium">Saved ✓</span>}
+          {error && <span className="text-xs text-red-500">{error}</span>}
+          <a
+            href={`/p/${product.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-gray-400 hover:text-gray-700 transition"
+          >
+            Preview ↗
+          </a>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-indigo-600 text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 border-b border-gray-200">
+        {TABS.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition -mb-px border-b-2 ${
+              activeTab === tab
+                ? "border-indigo-600 text-indigo-600"
+                : "border-transparent text-gray-400 hover:text-gray-700"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        {tabContent[activeTab]}
+      </div>
+    </div>
+  );
+}
