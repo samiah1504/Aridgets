@@ -9,7 +9,10 @@ interface MetaPixelProps {
 }
 
 export default function MetaPixel({ pixelId, productName, price }: MetaPixelProps) {
-  const safeName = productName.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+  // Pixel IDs are purely numeric — reject anything else to prevent script injection
+  if (!/^\d{10,20}$/.test(pixelId)) return null;
+  // JSON.stringify handles all escaping edge cases safely
+  const safeProductName = JSON.stringify(productName);
 
   return (
     <>
@@ -22,7 +25,7 @@ export default function MetaPixel({ pixelId, productName, price }: MetaPixelProp
         fbq('init','${pixelId}');
         fbq('track','PageView');
         fbq('track','ViewContent',{
-          content_name:'${safeName}',
+          content_name:${safeProductName},
           content_type:'product',
           currency:'NGN',
           value:${price}

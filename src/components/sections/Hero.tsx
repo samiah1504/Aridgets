@@ -39,8 +39,8 @@ export default function Hero({
       {starRating !== undefined && (
         <div className="flex items-center gap-2 mb-4">
           <span className="text-yellow-400 text-lg leading-none">
-            {"★".repeat(Math.round(starRating))}
-            {"☆".repeat(5 - Math.round(starRating))}
+            {"★".repeat(Math.min(5, Math.max(0, Math.round(starRating))))}
+            {"☆".repeat(5 - Math.min(5, Math.max(0, Math.round(starRating))))}
           </span>
           <span className="text-sm text-gray-500 font-medium">
             {starRating.toFixed(1)} rating
@@ -58,14 +58,14 @@ export default function Hero({
           {formatNGN(price)}
         </span>
         {compareAtPrice && compareAtPrice > price && (
-          <span className="text-lg text-gray-400 line-through">
-            {formatNGN(compareAtPrice)}
-          </span>
-        )}
-        {compareAtPrice && compareAtPrice > price && (
-          <span className="text-sm font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">
-            Save {formatNGN(compareAtPrice - price)}
-          </span>
+          <>
+            <span className="text-lg text-gray-400 line-through">
+              {formatNGN(compareAtPrice)}
+            </span>
+            <span className="text-sm font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">
+              Save {formatNGN(compareAtPrice - price)}
+            </span>
+          </>
         )}
       </div>
       <a

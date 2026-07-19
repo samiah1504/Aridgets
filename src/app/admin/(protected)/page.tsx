@@ -22,6 +22,14 @@ const STATUS_BADGE: Record<LeadStatus, string> = {
   not_buying: "bg-gray-100 text-gray-500",
 };
 
+const STATUS_LABELS: Record<LeadStatus, string> = {
+  new: "New",
+  buying: "Buying",
+  delivery: "Delivery",
+  paid: "Paid",
+  not_buying: "Not Buying",
+};
+
 export default async function DashboardPage() {
   const supabase = await createClient();
 
@@ -122,7 +130,7 @@ export default async function DashboardPage() {
                             STATUS_BADGE[lead.status as LeadStatus] ?? STATUS_BADGE.new
                           }`}
                         >
-                          {lead.status}
+                          {STATUS_LABELS[lead.status as LeadStatus] ?? lead.status}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-right">

@@ -20,8 +20,7 @@ self.addEventListener("notificationclick", (event) => {
       .then((clientList) => {
         for (const client of clientList) {
           if (client.url.includes("/admin") && "focus" in client) {
-            client.focus();
-            return;
+            return client.navigate(url).then(() => client.focus());
           }
         }
         if (clients.openWindow) return clients.openWindow(url);

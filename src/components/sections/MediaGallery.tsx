@@ -30,7 +30,7 @@ export default function MediaGallery({
         src={hero.url}
         alt={hero.alt ?? productName}
         className="w-full rounded-2xl object-cover aspect-square shadow-md"
-        loading="lazy"
+        loading="eager"
       />
       {gallery.length > 0 && (
         <div className="grid grid-cols-4 gap-2 mt-2">

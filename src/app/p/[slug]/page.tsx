@@ -23,7 +23,7 @@ async function getProduct(slug: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("products")
-    .select("*")
+    .select("id, name, slug, status, price, compare_at_price, theme, content, sections, pixel_id")
     .eq("slug", slug)
     .eq("status", "live")
     .single();
@@ -72,7 +72,7 @@ export default async function ProductPage({
   const media = await getMedia(product.id);
   const theme = product.theme as ProductTheme;
   const content = product.content as ProductContent;
-  const sections = product.sections as SectionConfig[];
+  const sections = (product.sections ?? []) as SectionConfig[];
 
   function sp1(key: string): string | undefined {
     const v = sp[key];

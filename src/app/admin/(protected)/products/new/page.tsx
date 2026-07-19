@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -58,6 +59,10 @@ export default function NewProductPage() {
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             placeholder="e.g. Posture Corrector Pro"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="sentences"
+            spellCheck={false}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
           />
@@ -78,6 +83,10 @@ export default function NewProductPage() {
                 setSlug(e.target.value.toLowerCase().replace(DEFAULT_SLUG_RE, ""))
               }
               placeholder="posture-corrector-pro"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               className="flex-1 px-3 py-2 text-sm focus:outline-none"
               required
             />
@@ -113,12 +122,12 @@ export default function NewProductPage() {
           >
             {saving ? "Creating…" : "Create product"}
           </button>
-          <a
+          <Link
             href="/admin/products"
             className="text-sm text-gray-500 hover:text-gray-700 transition"
           >
             Cancel
-          </a>
+          </Link>
         </div>
       </form>
     </div>

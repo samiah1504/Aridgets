@@ -140,7 +140,8 @@ export default function OrderForm({
         );
       }
 
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      // Scroll success message into view (the success card renders inside #order)
+      document.getElementById("order")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch {
       setApiError("Network error. Please check your connection and try again.");
     } finally {
@@ -220,7 +221,7 @@ export default function OrderForm({
               id="of-phone"
               type="tel"
               autoComplete="tel"
-              inputMode="numeric"
+              inputMode="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="e.g. 08012345678"

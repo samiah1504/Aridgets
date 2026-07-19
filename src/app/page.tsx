@@ -117,7 +117,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                       </div>
 
                       {/* CTA */}
-                      <div className="mt-4 mt-auto pt-4">
+                      <div className="mt-auto pt-4">
                         <Link
                           href={`/p/${p.slug}`}
                           className="block w-full text-center bg-gray-900 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-gray-700 transition"
