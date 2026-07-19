@@ -14,6 +14,7 @@ interface OrderFormProps {
   successHeadline?: string;
   successBody?: string;
   ctaText?: string;
+  pixelId?: string;
   fbclid?: string;
   utmSource?: string;
   utmMedium?: string;
@@ -25,6 +26,7 @@ interface SuccessData {
   order_number: string;
   total: number;
   name: string;
+  event_id_lead: string;
 }
 
 function getCookie(name: string): string | undefined {
@@ -43,6 +45,7 @@ export default function OrderForm({
   successHeadline,
   successBody,
   ctaText,
+  pixelId,
   fbclid,
   utmSource,
   utmMedium,
@@ -126,6 +129,17 @@ export default function OrderForm({
 
       const result = data as SuccessData;
       setSuccess(result);
+
+      // Fire pixel Lead event (deduplication via eventID matches CAPI)
+      if (pixelId && typeof window !== "undefined" && "fbq" in window) {
+        (window as Window & { fbq: Function }).fbq(
+          "track",
+          "Lead",
+          { value: result.total, currency: "NGN" },
+          { eventID: result.event_id_lead }
+        );
+      }
+
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
       setApiError("Network error. Please check your connection and try again.");

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductContent, ProductTheme, SectionConfig } from "@/types";
+import MetaPixel from "@/components/MetaPixel";
 import AnnouncementBar from "@/components/sections/AnnouncementBar";
 import Hero from "@/components/sections/Hero";
 import Problem from "@/components/sections/Problem";
@@ -112,6 +113,7 @@ export default async function ProductPage({
         successHeadline={content.orderSuccessHeadline}
         successBody={content.orderSuccessBody}
         ctaText={content.ctaText}
+        pixelId={product.pixel_id ?? undefined}
         fbclid={sp1("fbclid")}
         utmSource={sp1("utm_source")}
         utmMedium={sp1("utm_medium")}
@@ -146,6 +148,14 @@ export default async function ProductPage({
         <footer className="text-center py-8 text-xs opacity-50 px-4">
           {content.footerText}
         </footer>
+      )}
+
+      {product.pixel_id && (
+        <MetaPixel
+          pixelId={product.pixel_id}
+          productName={product.name}
+          price={product.price}
+        />
       )}
     </div>
   );

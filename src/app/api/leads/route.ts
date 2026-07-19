@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { isValidNGPhone, normaliseNGPhone } from "@/lib/utils/phone";
+import { sendCAPIEvent } from "@/lib/capi";
 import type { Database } from "@/types/database";
 
 type LeadInsert = Database["public"]["Tables"]["leads"]["Insert"];
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
   const { data: lead, error: insertError } = await supabase
     .from("leads")
     .insert(insertPayload)
-    .select("order_number, total, name")
+    .select("order_number, total, name, event_id_lead")
     .single();
 
   if (insertError || !lead) {
@@ -100,6 +101,44 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = lead as { order_number: string; total: number; name: string };
+  const result = lead as {
+    order_number: string;
+    total: number;
+    name: string;
+    event_id_lead: string;
+  };
+
+  // Fire CAPI Lead — use service client to read secret capi_access_token
+  const serviceClient = createServiceClient();
+  const { data: pixelData } = await serviceClient
+    .from("products")
+    .select("pixel_id, capi_access_token, capi_test_event_code, name")
+    .eq("id", productId)
+    .single();
+
+  if (pixelData?.pixel_id && pixelData?.capi_access_token) {
+    const sourceUrl =
+      request.headers.get("referer") ??
+      `https://${request.headers.get("host") ?? "unknown"}`;
+
+    sendCAPIEvent({
+      pixelId: pixelData.pixel_id,
+      accessToken: pixelData.capi_access_token,
+      testEventCode: pixelData.capi_test_event_code,
+      eventName: "Lead",
+      eventId: result.event_id_lead,
+      eventTime: Math.floor(Date.now() / 1000),
+      sourceUrl,
+      phone: normaliseNGPhone(rawPhone),
+      clientIp,
+      clientUserAgent,
+      fbp: typeof b.fbp === "string" ? b.fbp : null,
+      fbc: typeof b.fbc === "string" ? b.fbc : null,
+      currency: "NGN",
+      value: result.total,
+      contentName: pixelData.name,
+    }).catch((err: unknown) => console.error("CAPI Lead:", err));
+  }
+
   return NextResponse.json(result, { status: 201 });
 }
