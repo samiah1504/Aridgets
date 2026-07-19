@@ -1,6 +1,6 @@
-# DropDesk — Build Brief
+# Crift Shop — Build Brief
 
-> **Working name:** `DropDesk` (placeholder). Swap it everywhere before shipping — it appears in the app title, order-number prefix (`DD-`), and metadata. Pick the final name and do a find-and-replace.
+> **App name:** `Crift Shop`. Order-number prefix: `CS-`.
 
 A self-hosted, single-operator **COD (cash/pay-on-delivery) sales-page engine** for Nigeria. It replaces GoHighLevel for one narrow job: spin up a high-converting landing page per product, capture leads from Facebook/TikTok ads, and work those leads through a call → deliver → collect-cash pipeline. Built for a **rotating "hot product" model** — no brand, no catalog. A product sells, we archive it, we launch the next.
 
@@ -318,8 +318,8 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=        # server only — used by API routes for CAPI + secrets
 META_GRAPH_API_VERSION=           # e.g. v21.0
-NEXT_PUBLIC_APP_NAME=DropDesk
-ORDER_PREFIX=DD
+NEXT_PUBLIC_APP_NAME=Crift Shop
+ORDER_PREFIX=CS
 # Custom domains (§4A) — all server-only:
 VERCEL_TOKEN=
 VERCEL_PROJECT_ID=

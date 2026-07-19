@@ -3,8 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: process.env.NEXT_PUBLIC_APP_NAME ?? "DropDesk",
-    template: `%s | ${process.env.NEXT_PUBLIC_APP_NAME ?? "DropDesk"}`,
+    default: process.env.NEXT_PUBLIC_APP_NAME ?? "Crift Shop",
+    template: `%s | ${process.env.NEXT_PUBLIC_APP_NAME ?? "Crift Shop"}`,
   },
   description: "High-converting COD sales pages for Nigeria.",
   robots: { index: false, follow: false },

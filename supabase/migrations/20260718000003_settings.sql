@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS public.settings (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  business_name    text NOT NULL DEFAULT 'DropDesk',
-  order_prefix     text NOT NULL DEFAULT 'DD',
+  business_name    text NOT NULL DEFAULT 'Crift Shop',
+  order_prefix     text NOT NULL DEFAULT 'CS',
   default_whatsapp text,
   default_theme    jsonb NOT NULL DEFAULT '{
     "primary":    "#e63946",
@@ -27,5 +27,5 @@ CREATE POLICY "admins_update_settings"
 
 -- Exactly one settings row — always present
 INSERT INTO public.settings (business_name, order_prefix)
-VALUES ('DropDesk', 'DD')
+VALUES ('Crift Shop', 'CS')
 ON CONFLICT DO NOTHING;

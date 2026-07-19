@@ -56,7 +56,7 @@ INSERT INTO public.products (
       {"question": "Can I order more than one?",   "answer": "Yes — select your quantity in the form. Each extra unit ships in the same delivery."},
       {"question": "Is this just for women?",      "answer": "No — the belt is unisex and adjustable to any body shape or size."}
     ],
-    "footerText":           "DropDesk · Nationwide COD Delivery",
+    "footerText":           "Crift Shop · Nationwide COD Delivery",
     "orderFormTitle":       "Order Your Posture Pro Belt — Pay on Delivery",
     "orderSuccessHeadline": "Order received!",
     "orderSuccessBody":     "We will call you shortly to confirm. Pay {total} to the rider on delivery — no online payment required."
@@ -126,7 +126,7 @@ INSERT INTO public.products (
       {"question": "How do I choose my size?","answer": "Measure your natural waist: XS(24–26in), S(27–29in), M(30–32in), L(33–35in), XL(36–38in), 2XL(39–41in), 3XL(42–44in), 4XL(45+in)."},
       {"question": "How long to see results?","answer": "Instant slimming when worn. With 6–8 hours daily use, most customers see inch loss in 3–4 weeks."}
     ],
-    "footerText":           "DropDesk · Nationwide COD Delivery",
+    "footerText":           "Crift Shop · Nationwide COD Delivery",
     "orderFormTitle":       "Order Your Slim Waist Trainer — Pay on Delivery",
     "orderSuccessHeadline": "Order placed!",
     "orderSuccessBody":     "We will call to confirm your size and delivery. Pay {total} to our rider on delivery."

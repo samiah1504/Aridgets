@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# DropDesk — Conventions
+# Crift Shop — Conventions
 
 Full build spec: `BUILD_BRIEF.md`
 
