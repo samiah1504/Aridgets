@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { formatNGN } from "@/lib/utils/currency";
@@ -9,7 +10,16 @@ export const metadata: Metadata = {
   description: "Browse our products and place your order today.",
 };
 
-export default async function HomePage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
+
+  // Supabase sends invite/magic-link codes to the Site URL — forward to the callback handler
+  if (typeof sp.code === "string") {
+    redirect(`/auth/callback?code=${encodeURIComponent(sp.code)}`);
+  }
+
   const supabase = await createClient();
 
   const { data: products } = await supabase
