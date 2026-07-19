@@ -2,23 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { isValidNGPhone, normaliseNGPhone } from "@/lib/utils/phone";
+import type { Database } from "@/types/database";
 
-interface LeadPayload {
-  product_id: string;
-  name: string;
-  phone: string;
-  state: string;
-  lga?: string;
-  address: string;
-  quantity?: number;
-  fbp?: string;
-  fbc?: string;
-  fbclid?: string;
-  utm_source?: string;
-  utm_medium?: string;
-  utm_campaign?: string;
-  utm_content?: string;
-}
+type LeadInsert = Database["public"]["Tables"]["leads"]["Insert"];
 
 export async function POST(request: NextRequest) {
   let body: unknown;
@@ -28,50 +14,50 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const payload = body as Partial<LeadPayload>;
-
-  // Validate required fields
-  if (!payload.product_id) {
-    return NextResponse.json({ error: "product_id is required" }, { status: 400 });
-  }
-  if (!payload.name?.trim()) {
-    return NextResponse.json({ error: "Name is required" }, { status: 400 });
-  }
-  if (!payload.phone?.trim()) {
-    return NextResponse.json({ error: "Phone is required" }, { status: 400 });
-  }
-  if (!isValidNGPhone(payload.phone)) {
-    return NextResponse.json(
-      { error: "Enter a valid Nigerian phone number" },
-      { status: 400 }
-    );
-  }
-  if (!payload.state?.trim()) {
-    return NextResponse.json({ error: "State is required" }, { status: 400 });
-  }
-  if (!payload.address?.trim()) {
-    return NextResponse.json({ error: "Delivery address is required" }, { status: 400 });
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const quantity = Math.max(1, Math.round(Number(payload.quantity ?? 1)));
+  const b = body as Record<string, unknown>;
 
-  // Fetch product to get live price
+  const productId = typeof b.product_id === "string" ? b.product_id : "";
+  const rawName = typeof b.name === "string" ? b.name.trim() : "";
+  const rawPhone = typeof b.phone === "string" ? b.phone.trim() : "";
+  const rawState = typeof b.state === "string" ? b.state.trim() : "";
+  const rawAddress = typeof b.address === "string" ? b.address.trim() : "";
+  const rawLga = typeof b.lga === "string" ? b.lga.trim() : null;
+  const quantity = Math.max(1, Math.round(Number(b.quantity ?? 1)));
+
+  if (!productId) return NextResponse.json({ error: "product_id is required" }, { status: 400 });
+  if (!rawName) return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  if (!rawPhone) return NextResponse.json({ error: "Phone is required" }, { status: 400 });
+  if (!isValidNGPhone(rawPhone)) {
+    return NextResponse.json({ error: "Enter a valid Nigerian phone number" }, { status: 400 });
+  }
+  if (!rawState) return NextResponse.json({ error: "State is required" }, { status: 400 });
+  if (!rawAddress) return NextResponse.json({ error: "Delivery address is required" }, { status: 400 });
+
   const supabase = await createClient();
-  const { data: product, error: productError } = await supabase
+
+  // Fetch product price (anon can read live products via RLS)
+  const { data: rawProduct, error: productError } = await supabase
     .from("products")
     .select("id, price, status")
-    .eq("id", payload.product_id)
-    .eq("status", "live")
+    .eq("id", productId)
     .single();
 
-  if (productError || !product) {
+  if (productError || !rawProduct) {
     return NextResponse.json({ error: "Product not found" }, { status: 404 });
+  }
+
+  const product = rawProduct as { id: string; price: number; status: string };
+  if (product.status !== "live") {
+    return NextResponse.json({ error: "Product not available" }, { status: 404 });
   }
 
   const unitPrice = product.price;
   const total = unitPrice * quantity;
 
-  // Grab client metadata from request headers
   const headerStore = await headers();
   const clientIp =
     request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
@@ -79,28 +65,30 @@ export async function POST(request: NextRequest) {
     null;
   const clientUserAgent = headerStore.get("user-agent") ?? null;
 
+  const insertPayload: LeadInsert = {
+    product_id: productId,
+    name: rawName,
+    phone: normaliseNGPhone(rawPhone),
+    state: rawState,
+    lga: rawLga || null,
+    address: rawAddress,
+    quantity,
+    unit_price: unitPrice,
+    total,
+    fbp: typeof b.fbp === "string" ? b.fbp : null,
+    fbc: typeof b.fbc === "string" ? b.fbc : null,
+    fbclid: typeof b.fbclid === "string" ? b.fbclid : null,
+    utm_source: typeof b.utm_source === "string" ? b.utm_source : null,
+    utm_medium: typeof b.utm_medium === "string" ? b.utm_medium : null,
+    utm_campaign: typeof b.utm_campaign === "string" ? b.utm_campaign : null,
+    utm_content: typeof b.utm_content === "string" ? b.utm_content : null,
+    client_ip: clientIp,
+    client_user_agent: clientUserAgent,
+  };
+
   const { data: lead, error: insertError } = await supabase
     .from("leads")
-    .insert({
-      product_id: payload.product_id,
-      name: payload.name.trim(),
-      phone: normaliseNGPhone(payload.phone),
-      state: payload.state.trim(),
-      lga: payload.lga?.trim() || null,
-      address: payload.address.trim(),
-      quantity,
-      unit_price: unitPrice,
-      total,
-      fbp: payload.fbp ?? null,
-      fbc: payload.fbc ?? null,
-      fbclid: payload.fbclid ?? null,
-      utm_source: payload.utm_source ?? null,
-      utm_medium: payload.utm_medium ?? null,
-      utm_campaign: payload.utm_campaign ?? null,
-      utm_content: payload.utm_content ?? null,
-      client_ip: clientIp,
-      client_user_agent: clientUserAgent,
-    })
+    .insert(insertPayload)
     .select("order_number, total, name")
     .single();
 
@@ -112,5 +100,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json(lead, { status: 201 });
+  const result = lead as { order_number: string; total: number; name: string };
+  return NextResponse.json(result, { status: 201 });
 }

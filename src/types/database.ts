@@ -37,6 +37,7 @@ export type Database = {
           role?: UserRole;
           active?: boolean;
         };
+        Relationships: [];
       };
 
       settings: {
@@ -60,6 +61,7 @@ export type Database = {
           default_whatsapp?: string | null;
           default_theme?: ProductTheme;
         };
+        Relationships: [];
       };
 
       products: {
@@ -116,6 +118,7 @@ export type Database = {
           whatsapp_number?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
 
       product_media: {
@@ -149,6 +152,15 @@ export type Database = {
           sort_order?: number;
           alt?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "product_media_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       leads: {
@@ -222,6 +234,15 @@ export type Database = {
           dispatched_at?: string | null;
           paid_at?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "leads_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       domains: {
@@ -256,6 +277,7 @@ export type Database = {
           vercel_verification?: Record<string, unknown> | null;
           is_primary?: boolean;
         };
+        Relationships: [];
       };
 
       lead_status_history: {
@@ -280,6 +302,15 @@ export type Database = {
         Update: {
           note?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "lead_status_history_lead_id_fkey";
+            columns: ["lead_id"];
+            isOneToOne: false;
+            referencedRelation: "leads";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       ad_spend: {
@@ -303,6 +334,7 @@ export type Database = {
           amount?: number;
           platform?: "meta" | "tiktok";
         };
+        Relationships: [];
       };
 
       push_subscriptions: {
@@ -321,6 +353,7 @@ export type Database = {
         Update: {
           subscription?: PushSubscriptionJSON;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
@@ -335,6 +368,7 @@ export type Database = {
       };
     };
     Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 };
 
