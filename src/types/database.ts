@@ -81,6 +81,7 @@ export type Database = {
           capi_access_token: string | null;
           capi_test_event_code: string | null;
           whatsapp_number: string | null;
+          show_on_homepage: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -99,6 +100,7 @@ export type Database = {
           capi_access_token?: string | null;
           capi_test_event_code?: string | null;
           whatsapp_number?: string | null;
+          show_on_homepage?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -116,6 +118,7 @@ export type Database = {
           capi_access_token?: string | null;
           capi_test_event_code?: string | null;
           whatsapp_number?: string | null;
+          show_on_homepage?: boolean;
           updated_at?: string;
         };
         Relationships: [];

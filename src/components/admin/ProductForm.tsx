@@ -78,6 +78,7 @@ export default function ProductForm({ product: initial }: Props) {
         price: product.price,
         compare_at_price: product.compare_at_price,
         whatsapp_number: product.whatsapp_number,
+        show_on_homepage: product.show_on_homepage,
         theme: product.theme,
         content: product.content,
         sections: product.sections,
@@ -252,6 +253,16 @@ export default function ProductForm({ product: initial }: Props) {
         <Field label="WhatsApp number" hint="Optional — for order confirmation messages">
           <Input value={product.whatsapp_number ?? ""} onChange={(v) => setField("whatsapp_number", v || null)} placeholder="+2348012345678" />
         </Field>
+        <label className="flex items-center gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={product.show_on_homepage}
+            onChange={(e) => setField("show_on_homepage", e.target.checked)}
+            className="w-4 h-4 accent-indigo-600"
+          />
+          <span className="text-sm text-gray-700 font-medium">Show on homepage</span>
+          <span className="text-xs text-gray-400">Appears in the public product showcase when status is Live</span>
+        </label>
       </div>
     ),
 
