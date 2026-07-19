@@ -14,11 +14,13 @@ CREATE TABLE IF NOT EXISTS public.settings (
 
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "admins_read_settings" ON public.settings;
 CREATE POLICY "admins_read_settings"
   ON public.settings FOR SELECT
   TO authenticated
   USING (get_user_role() IN ('owner', 'admin'));
 
+DROP POLICY IF EXISTS "admins_update_settings" ON public.settings;
 CREATE POLICY "admins_update_settings"
   ON public.settings FOR UPDATE
   TO authenticated

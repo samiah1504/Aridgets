@@ -16,6 +16,7 @@ CREATE INDEX idx_product_media_product_slot
 ALTER TABLE public.product_media ENABLE ROW LEVEL SECURITY;
 
 -- Public: read media for live products only
+DROP POLICY IF EXISTS "public_read_product_media" ON public.product_media;
 CREATE POLICY "public_read_product_media"
   ON public.product_media FOR SELECT
   TO anon, authenticated
@@ -27,6 +28,7 @@ CREATE POLICY "public_read_product_media"
   );
 
 -- Owner/admin: full CRUD on media for any product (including draft)
+DROP POLICY IF EXISTS "admin_manage_product_media" ON public.product_media;
 CREATE POLICY "admin_manage_product_media"
   ON public.product_media FOR ALL
   TO authenticated

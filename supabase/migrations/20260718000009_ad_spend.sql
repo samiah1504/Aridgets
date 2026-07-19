@@ -13,6 +13,7 @@ CREATE INDEX idx_ad_spend_product_date
 
 ALTER TABLE public.ad_spend ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "admin_manage_ad_spend" ON public.ad_spend;
 CREATE POLICY "admin_manage_ad_spend"
   ON public.ad_spend FOR ALL
   TO authenticated

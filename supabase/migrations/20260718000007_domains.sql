@@ -19,12 +19,14 @@ ALTER TABLE public.domains ENABLE ROW LEVEL SECURITY;
 -- Middleware reads domains to resolve incoming hostnames to products.
 -- The middleware uses the service-role client, so RLS is bypassed there.
 -- We also allow anon SELECT so the edge middleware can use the anon key if preferred.
+DROP POLICY IF EXISTS "public_read_domains" ON public.domains;
 CREATE POLICY "public_read_domains"
   ON public.domains FOR SELECT
   TO anon, authenticated
   USING (true);
 
 -- Only owner/admin can add, edit, or remove domain records
+DROP POLICY IF EXISTS "admin_manage_domains" ON public.domains;
 CREATE POLICY "admin_manage_domains"
   ON public.domains FOR ALL
   TO authenticated

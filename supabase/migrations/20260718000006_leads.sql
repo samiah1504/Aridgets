@@ -73,12 +73,14 @@ CREATE TRIGGER leads_updated_at
 ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 
 -- Anyone (including anon from the order form) can INSERT a lead
+DROP POLICY IF EXISTS "public_insert_leads" ON public.leads;
 CREATE POLICY "public_insert_leads"
   ON public.leads FOR INSERT
   TO anon, authenticated
   WITH CHECK (true);
 
 -- Owner/admin: full access
+DROP POLICY IF EXISTS "admin_manage_leads" ON public.leads;
 CREATE POLICY "admin_manage_leads"
   ON public.leads FOR ALL
   TO authenticated
@@ -86,11 +88,13 @@ CREATE POLICY "admin_manage_leads"
   WITH CHECK (get_user_role() IN ('owner', 'admin'));
 
 -- Agents: read all leads and update (call notes, status transitions)
+DROP POLICY IF EXISTS "agent_read_leads" ON public.leads;
 CREATE POLICY "agent_read_leads"
   ON public.leads FOR SELECT
   TO authenticated
   USING (get_user_role() = 'agent');
 
+DROP POLICY IF EXISTS "agent_update_leads" ON public.leads;
 CREATE POLICY "agent_update_leads"
   ON public.leads FOR UPDATE
   TO authenticated
@@ -98,6 +102,7 @@ CREATE POLICY "agent_update_leads"
   WITH CHECK (get_user_role() = 'agent');
 
 -- Dispatch: view and update confirmed/delivery leads only
+DROP POLICY IF EXISTS "dispatch_read_leads" ON public.leads;
 CREATE POLICY "dispatch_read_leads"
   ON public.leads FOR SELECT
   TO authenticated
@@ -106,6 +111,7 @@ CREATE POLICY "dispatch_read_leads"
     AND status IN ('buying', 'delivery', 'paid')
   );
 
+DROP POLICY IF EXISTS "dispatch_update_leads" ON public.leads;
 CREATE POLICY "dispatch_update_leads"
   ON public.leads FOR UPDATE
   TO authenticated

@@ -50,12 +50,14 @@ ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 
 -- Public (anon): read live products for the sales page.
 -- Application code MUST NOT select capi_access_token here.
+DROP POLICY IF EXISTS "public_read_live_products" ON public.products;
 CREATE POLICY "public_read_live_products"
   ON public.products FOR SELECT
   TO anon, authenticated
   USING (status = 'live');
 
 -- Owner/admin: full CRUD including draft/archived
+DROP POLICY IF EXISTS "admin_manage_products" ON public.products;
 CREATE POLICY "admin_manage_products"
   ON public.products FOR ALL
   TO authenticated

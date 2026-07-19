@@ -12,6 +12,7 @@ CREATE INDEX idx_push_subscriptions_user
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- Each user manages only their own push subscriptions
+DROP POLICY IF EXISTS "own_push_subscriptions" ON public.push_subscriptions;
 CREATE POLICY "own_push_subscriptions"
   ON public.push_subscriptions FOR ALL
   TO authenticated

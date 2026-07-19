@@ -33,18 +33,21 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Users see their own profile
+DROP POLICY IF EXISTS "own_profile_select" ON public.profiles;
 CREATE POLICY "own_profile_select"
   ON public.profiles FOR SELECT
   TO authenticated
   USING (id = auth.uid());
 
 -- Owners and admins see every profile
+DROP POLICY IF EXISTS "admin_profile_select" ON public.profiles;
 CREATE POLICY "admin_profile_select"
   ON public.profiles FOR SELECT
   TO authenticated
   USING (get_user_role() IN ('owner', 'admin'));
 
 -- Owners can change any profile (e.g. promote agent to admin)
+DROP POLICY IF EXISTS "owner_profile_update" ON public.profiles;
 CREATE POLICY "owner_profile_update"
   ON public.profiles FOR UPDATE
   TO authenticated
@@ -52,6 +55,7 @@ CREATE POLICY "owner_profile_update"
   WITH CHECK (get_user_role() = 'owner');
 
 -- Users can edit their own display name
+DROP POLICY IF EXISTS "own_profile_update" ON public.profiles;
 CREATE POLICY "own_profile_update"
   ON public.profiles FOR UPDATE
   TO authenticated

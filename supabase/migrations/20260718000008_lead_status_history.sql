@@ -34,6 +34,7 @@ CREATE TRIGGER lead_status_audit
   FOR EACH ROW EXECUTE FUNCTION public.record_lead_status_change();
 
 -- All staff roles can read the audit trail
+DROP POLICY IF EXISTS "staff_read_history" ON public.lead_status_history;
 CREATE POLICY "staff_read_history"
   ON public.lead_status_history FOR SELECT
   TO authenticated
