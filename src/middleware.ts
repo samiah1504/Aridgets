@@ -30,6 +30,10 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const isPublicAdminPage =
+    pathname === "/admin/login" ||
+    pathname === "/admin/forgot-password" ||
+    pathname === "/admin/reset-password";
   const isLoginPage = pathname === "/admin/login";
   const isAdminPage = pathname.startsWith("/admin");
 
@@ -42,7 +46,7 @@ export async function middleware(request: NextRequest) {
     return res;
   }
 
-  if (isAdminPage && !isLoginPage && !user) {
+  if (isAdminPage && !isPublicAdminPage && !user) {
     return redirectWithCookies("/admin/login");
   }
 
