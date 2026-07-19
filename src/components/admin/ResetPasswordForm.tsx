@@ -1,25 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function ResetPasswordForm({ code }: { code: string | null }) {
+export default function ResetPasswordForm() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [exchanging, setExchanging] = useState(!!code);
   const router = useRouter();
-
-  useEffect(() => {
-    if (!code) return;
-    const supabase = createClient();
-    supabase.auth.exchangeCodeForSession(code).then(({ error: err }) => {
-      setExchanging(false);
-      if (err) setError(err.message);
-    });
-  }, [code]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,34 +28,6 @@ export default function ResetPasswordForm({ code }: { code: string | null }) {
       router.push("/admin");
       router.refresh();
     }
-  }
-
-  if (!code) {
-    return (
-      <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-        Invalid or missing reset link. Please request a new one.
-      </p>
-    );
-  }
-
-  if (exchanging) {
-    return <p className="text-sm text-gray-500 text-center">Verifying link…</p>;
-  }
-
-  if (error && !password) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {error}
-        </p>
-        <a
-          href="/admin/forgot-password"
-          className="block text-center text-sm text-indigo-600 hover:text-indigo-800 transition"
-        >
-          Request a new link
-        </a>
-      </div>
-    );
   }
 
   return (
