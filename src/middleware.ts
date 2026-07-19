@@ -33,12 +33,21 @@ export async function middleware(request: NextRequest) {
   const isLoginPage = pathname === "/admin/login";
   const isAdminPage = pathname.startsWith("/admin");
 
+  function redirectWithCookies(destination: string) {
+    const res = NextResponse.redirect(new URL(destination, request.url));
+    // Carry refreshed session cookies so the destination page sees the new token
+    supabaseResponse.cookies.getAll().forEach(({ name, value }) => {
+      res.cookies.set(name, value);
+    });
+    return res;
+  }
+
   if (isAdminPage && !isLoginPage && !user) {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
+    return redirectWithCookies("/admin/login");
   }
 
   if (isLoginPage && user) {
-    return NextResponse.redirect(new URL("/admin/products", request.url));
+    return redirectWithCookies("/admin");
   }
 
   return supabaseResponse;
