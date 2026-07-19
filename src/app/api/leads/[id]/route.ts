@@ -8,7 +8,15 @@ type LeadUpdate = Database["public"]["Tables"]["leads"]["Update"];
 
 type Params = Promise<{ id: string }>;
 
-const VALID_STATUSES: LeadStatus[] = ["new", "buying", "delivery", "paid", "not_buying"];
+const VALID_STATUSES: LeadStatus[] = [
+  "new",
+  "confirmed",
+  "not_buying",
+  "cancelled",
+  "not_picking_calls",
+];
+
+const DROP_STATUSES: LeadStatus[] = ["not_buying", "cancelled", "not_picking_calls"];
 
 export async function PATCH(request: NextRequest, { params }: { params: Params }) {
   const { id } = await params;
@@ -43,7 +51,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
   const { data: lead, error: fetchErr } = await supabase
     .from("leads")
     .select(
-      "id, status, product_id, event_id_purchase, confirmed_at, dispatched_at, paid_at, phone, client_ip, client_user_agent, fbp, fbc, total"
+      "id, status, product_id, event_id_purchase, confirmed_at, dropped_at, phone, client_ip, client_user_agent, fbp, fbc, total"
     )
     .eq("id", id)
     .single();
@@ -64,17 +72,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
   if (newStatus) {
     const s = newStatus as LeadStatus;
     update.status = s;
-    if (s === "buying" && !lead.confirmed_at) {
+    if (s === "confirmed" && !lead.confirmed_at) {
       update.confirmed_at = new Date().toISOString();
     }
-    if (s === "delivery" && !lead.dispatched_at) {
-      update.dispatched_at = new Date().toISOString();
-    }
-    if (s === "paid" && !lead.paid_at) {
-      update.paid_at = new Date().toISOString();
+    // dropped_at records the most recent drop; cleared when the lead re-enters the pipeline
+    if (DROP_STATUSES.includes(s)) {
+      update.dropped_at = new Date().toISOString();
+    } else if (lead.dropped_at) {
+      update.dropped_at = null;
     }
     // Generate purchase event ID now (before the update) so we can fire CAPI after
-    if (s === "paid" && !lead.event_id_purchase) {
+    if (s === "confirmed" && !lead.event_id_purchase) {
       update.event_id_purchase = crypto.randomUUID();
     }
   }
@@ -99,8 +107,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     });
   }
 
-  // Fire CAPI Purchase if transitioning to paid for the first time
-  if (newStatus === "paid" && !lead.event_id_purchase) {
+  // Fire CAPI Purchase if transitioning to confirmed for the first time
+  if (newStatus === "confirmed" && !lead.event_id_purchase) {
     const eventIdPurchase = update.event_id_purchase as string;
     const serviceClient = createServiceClient();
     const { data: product } = await serviceClient

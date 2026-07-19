@@ -18,18 +18,18 @@ export default async function ProductsPage() {
   ]);
 
   // Aggregate lead counts per product
-  const leadMap: Record<string, { total: number; paid: number }> = {};
+  const leadMap: Record<string, { total: number; confirmed: number }> = {};
   for (const l of leads ?? []) {
-    const s = (leadMap[l.product_id] ??= { total: 0, paid: 0 });
+    const s = (leadMap[l.product_id] ??= { total: 0, confirmed: 0 });
     s.total++;
-    if (l.status === "paid") s.paid++;
+    if (l.status === "confirmed") s.confirmed++;
   }
 
   const enriched: EnrichedProduct[] = (products ?? []).map((p) => ({
     ...p,
     product_media: (p.product_media ?? []) as EnrichedProduct["product_media"],
     leadCount: leadMap[p.id]?.total ?? 0,
-    paidCount: leadMap[p.id]?.paid ?? 0,
+    confirmedCount: leadMap[p.id]?.confirmed ?? 0,
   }));
 
   return <ProductsGrid products={enriched} />;

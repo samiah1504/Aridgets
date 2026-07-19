@@ -29,7 +29,7 @@ export type EnrichedProduct = {
   created_at: string;
   product_media: ProductMedia[] | null;
   leadCount: number;
-  paidCount: number;
+  confirmedCount: number;
 };
 
 type SortKey = "newest" | "oldest" | "updated" | "price_high" | "price_low" | "alpha";
@@ -205,7 +205,7 @@ function ProductCard({ product }: { product: EnrichedProduct }) {
 
   const cfg = STATUS[product.status] ?? STATUS.draft;
   const conversion = product.leadCount > 0
-    ? Math.round((product.paidCount / product.leadCount) * 100)
+    ? Math.round((product.confirmedCount / product.leadCount) * 100)
     : null;
 
   return (

@@ -9,28 +9,28 @@ export const metadata: Metadata = { title: "Leads" };
 type SearchParams = Promise<{ status?: string }>;
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
-  new: "New",
-  buying: "Buying",
-  delivery: "Delivery",
-  paid: "Paid",
+  new: "New Lead",
+  confirmed: "Confirmed",
   not_buying: "Not Buying",
+  cancelled: "Cancelled",
+  not_picking_calls: "Not Picking Calls",
 };
 
 const STATUS_STYLES: Record<LeadStatus, string> = {
-  new: "bg-blue-100 text-blue-700",
-  buying: "bg-yellow-100 text-yellow-700",
-  delivery: "bg-purple-100 text-purple-700",
-  paid: "bg-green-100 text-green-700",
-  not_buying: "bg-gray-100 text-gray-500",
+  new: "bg-yellow-100 text-yellow-700",
+  confirmed: "bg-green-100 text-green-700",
+  not_buying: "bg-red-100 text-red-700",
+  cancelled: "bg-gray-200 text-gray-600",
+  not_picking_calls: "bg-gray-100 text-gray-500",
 };
 
 const TABS: Array<{ value: string; label: string }> = [
   { value: "", label: "All" },
   { value: "new", label: "New" },
-  { value: "buying", label: "Buying" },
-  { value: "delivery", label: "Delivery" },
-  { value: "paid", label: "Paid" },
+  { value: "confirmed", label: "Confirmed" },
   { value: "not_buying", label: "Not Buying" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "not_picking_calls", label: "Not Picking Calls" },
 ];
 
 export default async function LeadsPage({ searchParams }: { searchParams: SearchParams }) {

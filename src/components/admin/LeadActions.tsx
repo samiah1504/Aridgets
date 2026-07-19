@@ -14,20 +14,24 @@ type NextAction = { label: string; status: LeadStatus; style: string };
 
 const NEXT_ACTIONS: Record<LeadStatus, NextAction[]> = {
   new: [
-    { label: "Confirm Interest →", status: "buying", style: "bg-yellow-500 hover:bg-yellow-600 text-white" },
-    { label: "Not Buying", status: "not_buying", style: "bg-gray-200 hover:bg-gray-300 text-gray-700" },
+    { label: "Confirm ✓", status: "confirmed", style: "bg-green-600 hover:bg-green-700 text-white" },
+    { label: "Not Picking Calls", status: "not_picking_calls", style: "bg-gray-200 hover:bg-gray-300 text-gray-700" },
+    { label: "Not Buying", status: "not_buying", style: "bg-red-100 hover:bg-red-200 text-red-700" },
+    { label: "Cancel", status: "cancelled", style: "bg-gray-200 hover:bg-gray-300 text-gray-700" },
   ],
-  buying: [
-    { label: "Mark Dispatched →", status: "delivery", style: "bg-purple-600 hover:bg-purple-700 text-white" },
-    { label: "Not Buying", status: "not_buying", style: "bg-gray-200 hover:bg-gray-300 text-gray-700" },
+  confirmed: [
+    { label: "Cancel Order", status: "cancelled", style: "bg-gray-200 hover:bg-gray-300 text-gray-700" },
   ],
-  delivery: [
-    { label: "Mark Paid ✓", status: "paid", style: "bg-green-600 hover:bg-green-700 text-white" },
-    { label: "Not Buying", status: "not_buying", style: "bg-gray-200 hover:bg-gray-300 text-gray-700" },
+  not_picking_calls: [
+    { label: "Confirm ✓", status: "confirmed", style: "bg-green-600 hover:bg-green-700 text-white" },
+    { label: "Not Buying", status: "not_buying", style: "bg-red-100 hover:bg-red-200 text-red-700" },
+    { label: "Reopen as New", status: "new", style: "bg-yellow-500 hover:bg-yellow-600 text-white" },
   ],
-  paid: [],
   not_buying: [
-    { label: "Reopen as New", status: "new", style: "bg-blue-600 hover:bg-blue-700 text-white" },
+    { label: "Reopen as New", status: "new", style: "bg-yellow-500 hover:bg-yellow-600 text-white" },
+  ],
+  cancelled: [
+    { label: "Reopen as New", status: "new", style: "bg-yellow-500 hover:bg-yellow-600 text-white" },
   ],
 };
 

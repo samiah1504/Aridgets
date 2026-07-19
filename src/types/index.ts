@@ -7,10 +7,10 @@ export type ProductStatus = "draft" | "live" | "archived";
 
 export type LeadStatus =
   | "new"
-  | "buying"
-  | "delivery"
-  | "paid"
-  | "not_buying";
+  | "confirmed"
+  | "not_buying"
+  | "cancelled"
+  | "not_picking_calls";
 
 export type DomainStatus =
   | "pending"

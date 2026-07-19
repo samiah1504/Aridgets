@@ -9,19 +9,19 @@ import type { LeadStatus } from "@/types";
 type Params = Promise<{ id: string }>;
 
 const STATUS_STYLES: Record<LeadStatus, string> = {
-  new: "bg-blue-100 text-blue-700",
-  buying: "bg-yellow-100 text-yellow-700",
-  delivery: "bg-purple-100 text-purple-700",
-  paid: "bg-green-100 text-green-700",
-  not_buying: "bg-gray-100 text-gray-500",
+  new: "bg-yellow-100 text-yellow-700",
+  confirmed: "bg-green-100 text-green-700",
+  not_buying: "bg-red-100 text-red-700",
+  cancelled: "bg-gray-200 text-gray-600",
+  not_picking_calls: "bg-gray-100 text-gray-500",
 };
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
-  new: "New",
-  buying: "Buying",
-  delivery: "Delivery",
-  paid: "Paid",
+  new: "New Lead",
+  confirmed: "Confirmed",
   not_buying: "Not Buying",
+  cancelled: "Cancelled",
+  not_picking_calls: "Not Picking Calls",
 };
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
@@ -174,6 +174,34 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                   })}
                 </dd>
               </div>
+              {lead.confirmed_at && (
+                <div>
+                  <dt className="text-gray-400">Confirmed</dt>
+                  <dd className="font-medium text-green-700 mt-0.5">
+                    {new Date(lead.confirmed_at).toLocaleString("en-NG", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </dd>
+                </div>
+              )}
+              {lead.dropped_at && (
+                <div>
+                  <dt className="text-gray-400">Dropped</dt>
+                  <dd className="font-medium text-red-600 mt-0.5">
+                    {new Date(lead.dropped_at).toLocaleString("en-NG", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </dd>
+                </div>
+              )}
               {lead.utm_source && (
                 <div>
                   <dt className="text-gray-400">Source</dt>

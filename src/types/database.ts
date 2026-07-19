@@ -202,8 +202,7 @@ export type Database = {
           created_at: string;
           updated_at: string;
           confirmed_at: string | null;
-          dispatched_at: string | null;
-          paid_at: string | null;
+          dropped_at: string | null;
           variant_id: string | null;
           selected_options: Record<string, string> | null;
         };
@@ -243,8 +242,7 @@ export type Database = {
           call_notes?: string | null;
           event_id_purchase?: string | null;
           confirmed_at?: string | null;
-          dispatched_at?: string | null;
-          paid_at?: string | null;
+          dropped_at?: string | null;
         };
         Relationships: [
           {

@@ -16,7 +16,8 @@ Full build spec: `BUILD_BRIEF.md`
 - Phone: validate with `isValidNGPhone()` and store normalised via `normaliseNGPhone()`.
 - States: use `NIGERIAN_STATES` from `src/lib/constants/states.ts` — never hardcode.
 - Order numbers: `{ORDER_PREFIX}-{6-digit zero-padded}`, prefix from `settings` table.
-- CAPI Purchase fires only when a lead transitions to `paid` — never on form submit. Guard against double-fire (`event_id_purchase` must be null).
+- CAPI Purchase fires only when a lead transitions to `confirmed` — never on form submit. Guard against double-fire (`event_id_purchase` must be null).
+- Lead pipeline: `new` → `confirmed` (responsibility ends here) | drop statuses: `not_buying`, `cancelled`, `not_picking_calls`. No fulfilment statuses — Crift Shop is lead-gen, not order fulfilment. `confirmed_at`/`dropped_at` timestamp the transitions.
 
 ## Build phases
 0. Setup (done) — Next.js + Tailwind + Supabase client + helpers

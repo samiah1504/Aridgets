@@ -7,27 +7,27 @@ import type { LeadStatus } from "@/types";
 export const metadata: Metadata = { title: "Dashboard" };
 
 const FUNNEL: Array<{ status: LeadStatus; label: string; color: string }> = [
-  { status: "new", label: "New", color: "bg-blue-500" },
-  { status: "buying", label: "Buying", color: "bg-yellow-500" },
-  { status: "delivery", label: "Delivery", color: "bg-purple-500" },
-  { status: "paid", label: "Paid", color: "bg-green-500" },
-  { status: "not_buying", label: "Not Buying", color: "bg-gray-300" },
+  { status: "new", label: "New Lead", color: "bg-yellow-500" },
+  { status: "confirmed", label: "Confirmed", color: "bg-green-500" },
+  { status: "not_buying", label: "Not Buying", color: "bg-red-400" },
+  { status: "cancelled", label: "Cancelled", color: "bg-gray-400" },
+  { status: "not_picking_calls", label: "Not Picking Calls", color: "bg-gray-300" },
 ];
 
 const STATUS_BADGE: Record<LeadStatus, string> = {
-  new: "bg-blue-100 text-blue-700",
-  buying: "bg-yellow-100 text-yellow-700",
-  delivery: "bg-purple-100 text-purple-700",
-  paid: "bg-green-100 text-green-700",
-  not_buying: "bg-gray-100 text-gray-500",
+  new: "bg-yellow-100 text-yellow-700",
+  confirmed: "bg-green-100 text-green-700",
+  not_buying: "bg-red-100 text-red-700",
+  cancelled: "bg-gray-200 text-gray-600",
+  not_picking_calls: "bg-gray-100 text-gray-500",
 };
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
-  new: "New",
-  buying: "Buying",
-  delivery: "Delivery",
-  paid: "Paid",
+  new: "New Lead",
+  confirmed: "Confirmed",
   not_buying: "Not Buying",
+  cancelled: "Cancelled",
+  not_picking_calls: "Not Picking Calls",
 };
 
 export default async function DashboardPage() {
@@ -52,13 +52,13 @@ export default async function DashboardPage() {
   weekStart.setHours(0, 0, 0, 0);
 
   const todayLeads = leads.filter((l) => new Date(l.created_at) >= todayStart).length;
-  const paidLeads = leads.filter((l) => l.status === "paid");
-  const totalRevenue = paidLeads.reduce((s, l) => s + l.total, 0);
-  const weekRevenue = paidLeads
+  const confirmedLeads = leads.filter((l) => l.status === "confirmed");
+  const totalRevenue = confirmedLeads.reduce((s, l) => s + l.total, 0);
+  const weekRevenue = confirmedLeads
     .filter((l) => new Date(l.created_at) >= weekStart)
     .reduce((s, l) => s + l.total, 0);
   const conversionRate =
-    leads.length > 0 ? ((paidLeads.length / leads.length) * 100).toFixed(1) : "0.0";
+    leads.length > 0 ? ((confirmedLeads.length / leads.length) * 100).toFixed(1) : "0.0";
 
   const funnelCounts = leads.reduce<Record<string, number>>((acc, l) => {
     acc[l.status] = (acc[l.status] ?? 0) + 1;
@@ -68,12 +68,12 @@ export default async function DashboardPage() {
 
   const productStats = (products ?? []).map((p) => {
     const pLeads = leads.filter((l) => l.product_id === p.id);
-    const pPaid = pLeads.filter((l) => l.status === "paid");
+    const pConfirmed = pLeads.filter((l) => l.status === "confirmed");
     return {
       ...p,
       leadCount: pLeads.length,
-      paidCount: pPaid.length,
-      revenue: pPaid.reduce((s, l) => s + l.total, 0),
+      confirmedCount: pConfirmed.length,
+      revenue: pConfirmed.reduce((s, l) => s + l.total, 0),
     };
   });
 
@@ -85,7 +85,7 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Today's leads" value={todayLeads.toString()} />
         <StatCard label="This week's revenue" value={formatNGN(weekRevenue)} />
-        <StatCard label="Total paid orders" value={paidLeads.length.toString()} />
+        <StatCard label="Confirmed orders" value={confirmedLeads.length.toString()} />
         <StatCard
           label="All-time revenue"
           value={formatNGN(totalRevenue)}
@@ -173,7 +173,7 @@ export default async function DashboardPage() {
             })}
           </div>
           <p className="mt-5 text-xs text-gray-400">
-            {leads.length} total · {paidLeads.length} paid
+            {leads.length} total · {confirmedLeads.length} confirmed
           </p>
         </div>
       </div>
@@ -195,7 +195,7 @@ export default async function DashboardPage() {
               <tr className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-50">
                 <th className="px-5 py-3">Product</th>
                 <th className="px-5 py-3 text-right">Leads</th>
-                <th className="px-5 py-3 text-right">Paid</th>
+                <th className="px-5 py-3 text-right">Confirmed</th>
                 <th className="px-5 py-3 text-right">Revenue</th>
                 <th className="px-5 py-3 text-right">Conv.</th>
               </tr>
@@ -218,13 +218,13 @@ export default async function DashboardPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-right text-gray-600">{p.leadCount}</td>
-                  <td className="px-5 py-3 text-right text-gray-600">{p.paidCount}</td>
+                  <td className="px-5 py-3 text-right text-gray-600">{p.confirmedCount}</td>
                   <td className="px-5 py-3 text-right font-medium text-gray-800 whitespace-nowrap">
                     {formatNGN(p.revenue)}
                   </td>
                   <td className="px-5 py-3 text-right text-gray-500">
                     {p.leadCount > 0
-                      ? `${((p.paidCount / p.leadCount) * 100).toFixed(1)}%`
+                      ? `${((p.confirmedCount / p.leadCount) * 100).toFixed(1)}%`
                       : "—"}
                   </td>
                 </tr>
