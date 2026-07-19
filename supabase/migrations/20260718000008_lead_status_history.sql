@@ -29,6 +29,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS lead_status_audit ON public.leads;
 CREATE TRIGGER lead_status_audit
   AFTER UPDATE OF status ON public.leads
   FOR EACH ROW EXECUTE FUNCTION public.record_lead_status_change();

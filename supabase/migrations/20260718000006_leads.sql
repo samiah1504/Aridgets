@@ -66,6 +66,7 @@ CREATE INDEX IF NOT EXISTS idx_leads_order_number   ON public.leads (order_numbe
 CREATE INDEX IF NOT EXISTS idx_leads_assigned_to    ON public.leads (assigned_to);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at     ON public.leads (created_at DESC);
 
+DROP TRIGGER IF EXISTS leads_updated_at ON public.leads;
 CREATE TRIGGER leads_updated_at
   BEFORE UPDATE ON public.leads
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();

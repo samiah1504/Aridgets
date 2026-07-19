@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS public.products (
 CREATE INDEX IF NOT EXISTS idx_products_slug   ON public.products (slug);
 CREATE INDEX IF NOT EXISTS idx_products_status ON public.products (status);
 
+DROP TRIGGER IF EXISTS products_updated_at ON public.products;
 CREATE TRIGGER products_updated_at
   BEFORE UPDATE ON public.products
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
