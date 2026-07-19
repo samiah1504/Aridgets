@@ -8,6 +8,10 @@ export const metadata: Metadata = {
   },
   description: "High-converting COD sales pages for Nigeria.",
   robots: { index: false, follow: false },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
 };
 
 export default function RootLayout({
