@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef, useEffect, useTransition, useCallback } from "react";
+import { useState, useRef, useEffect, useTransition, useCallback, useDeferredValue } from "react";
 import { formatNGN } from "@/lib/utils/currency";
 import type { ProductTheme } from "@/types";
 import {
@@ -362,6 +362,8 @@ export default function ProductsGrid({ products }: { products: EnrichedProduct[]
   const [query, setQuery]   = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [sort, setSort]     = useState<SortKey>("newest");
+  // Defer filtering so the grid update never interrupts a keystroke
+  const deferredQuery = useDeferredValue(query);
 
   const counts = {
     live:     products.filter((p) => p.status === "live").length,
@@ -372,8 +374,8 @@ export default function ProductsGrid({ products }: { products: EnrichedProduct[]
   const visible = sortProducts(
     products.filter((p) => {
       if (filter !== "all" && p.status !== filter) return false;
-      if (query.trim()) {
-        const q = query.toLowerCase();
+      if (deferredQuery.trim()) {
+        const q = deferredQuery.toLowerCase();
         return p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q);
       }
       return true;
@@ -420,7 +422,12 @@ export default function ProductsGrid({ products }: { products: EnrichedProduct[]
               d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
           </svg>
           <input
-            type="search"
+            type="text"
+            enterKeyHint="search"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
             placeholder="Search products…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
