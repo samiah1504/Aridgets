@@ -4,7 +4,9 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { NIGERIAN_STATES } from "@/lib/constants/states";
 import type { Database } from "@/types/database";
-import type { ProductContent, ProductTheme, SectionConfig } from "@/types";
+import type { ProductContent, ProductTheme, SectionConfig, TemplateType } from "@/types";
+import VariationsEditor from "./VariationsEditor";
+import MediaManager from "./MediaManager";
 
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 
@@ -25,8 +27,15 @@ const SECTION_LABELS: Record<string, string> = {
 
 const FONTS = ["Inter", "Poppins", "Lato", "Montserrat", "Nunito", "Raleway"];
 
-const TABS = ["Basic", "Theme", "Content", "Sections", "Tracking"] as const;
+const TABS = ["Basic", "Design", "Theme", "Content", "Sections", "Tracking", "Media", "Variations"] as const;
 type Tab = (typeof TABS)[number];
+
+const TEMPLATE_TYPES: { value: TemplateType; label: string; description: string }[] = [
+  { value: "gadget", label: "Gadget", description: "Tech-forward layout: dark hero, feature cards, bold CTA." },
+  { value: "furniture", label: "Furniture", description: "Premium split-hero, serif typography, warm palette." },
+  { value: "kids_toy", label: "Kids Toy", description: "Bright, playful layout with age badges and emoji benefits." },
+  { value: "kids_fashion", label: "Kids Fashion", description: "Elegant fashion layout with large imagery and size selectors." },
+];
 
 // ─── Reusable field components (module-level — MUST stay outside ProductForm)
 // Defining these inside the render function gives them new references on every
@@ -203,6 +212,7 @@ export default function ProductForm({ product: initial }: Props) {
         pixel_id: product.pixel_id,
         capi_access_token: product.capi_access_token,
         capi_test_event_code: product.capi_test_event_code,
+        template_type: product.template_type as TemplateType,
       })
       .eq("id", product.id);
 
@@ -257,6 +267,37 @@ export default function ProductForm({ product: initial }: Props) {
           <span className="text-sm text-gray-700 font-medium">Show on homepage</span>
           <span className="text-xs text-gray-400">Appears in the public product showcase when status is Live</span>
         </label>
+      </div>
+    ),
+
+    Design: (
+      <div className="space-y-5">
+        <p className="text-sm text-gray-500">Choose the visual template for this product's sales page.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {TEMPLATE_TYPES.map((t) => (
+            <label
+              key={t.value}
+              className={`flex gap-3 p-4 rounded-xl border-2 cursor-pointer transition ${
+                (product.template_type as string) === t.value
+                  ? "border-indigo-600 bg-indigo-50"
+                  : "border-gray-100 hover:border-gray-200"
+              }`}
+            >
+              <input
+                type="radio"
+                name="template_type"
+                value={t.value}
+                checked={(product.template_type as string) === t.value}
+                onChange={() => { setField("template_type", t.value); setSaved(false); }}
+                className="mt-0.5 accent-indigo-600 shrink-0"
+              />
+              <div>
+                <p className="text-sm font-semibold text-gray-800">{t.label}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{t.description}</p>
+              </div>
+            </label>
+          ))}
+        </div>
       </div>
     ),
 
@@ -615,6 +656,26 @@ export default function ProductForm({ product: initial }: Props) {
         <Field label="Test event code" hint="From Meta Events Manager test events panel — remove when going live">
           <FormInput value={product.capi_test_event_code ?? ""} onChange={(v) => setField("capi_test_event_code", v || null)} placeholder="TEST12345" />
         </Field>
+      </div>
+    ),
+
+    Media: (
+      <div>
+        <p className="text-sm text-gray-500 mb-5">
+          Add images and videos for this product. Set one image as the Hero to show it first in the gallery.
+          Changes take effect immediately — no need to click Save.
+        </p>
+        <MediaManager productId={product.id} />
+      </div>
+    ),
+
+    Variations: (
+      <div>
+        <p className="text-sm text-gray-500 mb-5">
+          Define options (e.g. Colour, Size) and generate variant combinations with individual prices and stock.
+          Changes take effect immediately — no need to click Save.
+        </p>
+        <VariationsEditor productId={product.id} />
       </div>
     ),
   };

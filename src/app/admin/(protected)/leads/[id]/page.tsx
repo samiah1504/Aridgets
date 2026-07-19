@@ -151,6 +151,17 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 <dt className="text-gray-400">Total</dt>
                 <dd className="font-bold text-gray-900 text-base mt-0.5">{formatNGN(lead.total)}</dd>
               </div>
+              {lead.selected_options &&
+                Object.keys(lead.selected_options as Record<string, string>).length > 0 && (
+                  <div className="col-span-2">
+                    <dt className="text-gray-400">Variant</dt>
+                    <dd className="font-medium text-gray-900 mt-0.5">
+                      {Object.entries(lead.selected_options as Record<string, string>)
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join(", ")}
+                    </dd>
+                  </div>
+                )}
               <div>
                 <dt className="text-gray-400">Submitted</dt>
                 <dd className="font-medium text-gray-900 mt-0.5">

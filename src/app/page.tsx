@@ -25,7 +25,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const { data: products } = await supabase
     .from("products")
     .select(
-      "id, name, slug, price, compare_at_price, content, product_media(url, slot, kind, sort_order)"
+      "id, name, slug, price, compare_at_price, content, product_media(url, slot, kind, sort_order), product_variants(price_override, active)"
     )
     .eq("status", "live")
     .eq("show_on_homepage", true)
@@ -73,6 +73,17 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                 const tagline =
                   content?.eyebrow ?? content?.subhead ?? content?.headline ?? null;
 
+                const variantPrices = (
+                  p.product_variants as Array<{ price_override: number | null; active: boolean }> | null
+                )
+                  ?.filter((v) => v.active && v.price_override !== null)
+                  .map((v) => v.price_override as number) ?? [];
+
+                const minVariantPrice =
+                  variantPrices.length > 0 ? Math.min(...variantPrices) : null;
+                const displayPrice = minVariantPrice ?? p.price;
+                const pricePrefix = minVariantPrice !== null ? "From " : "";
+
                 return (
                   <div
                     key={p.id}
@@ -107,9 +118,9 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                       {/* Price */}
                       <div className="flex items-baseline gap-2 mt-3">
                         <span className="text-lg font-bold text-gray-900">
-                          {formatNGN(p.price)}
+                          {pricePrefix}{formatNGN(displayPrice)}
                         </span>
-                        {p.compare_at_price && p.compare_at_price > p.price && (
+                        {!minVariantPrice && p.compare_at_price && p.compare_at_price > p.price && (
                           <span className="text-sm text-gray-400 line-through">
                             {formatNGN(p.compare_at_price)}
                           </span>

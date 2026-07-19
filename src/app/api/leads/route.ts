@@ -39,6 +39,14 @@ export async function POST(request: NextRequest) {
   if (!rawState) return NextResponse.json({ error: "State is required" }, { status: 400 });
   if (!rawAddress) return NextResponse.json({ error: "Delivery address is required" }, { status: 400 });
 
+  const variantId = typeof b.variant_id === "string" && b.variant_id ? b.variant_id : null;
+  const rawSelectedOptions =
+    b.selected_options &&
+    typeof b.selected_options === "object" &&
+    !Array.isArray(b.selected_options)
+      ? (b.selected_options as Record<string, string>)
+      : null;
+
   const supabase = await createClient();
 
   // Fetch product price (anon can read live products via RLS)
@@ -57,7 +65,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Product not available" }, { status: 404 });
   }
 
-  const unitPrice = product.price;
+  let unitPrice = product.price;
+
+  // If a variant was selected, use its price_override (server-side validation)
+  if (variantId) {
+    const { data: variant } = await supabase
+      .from("product_variants")
+      .select("price_override, active")
+      .eq("id", variantId)
+      .eq("product_id", productId)
+      .single();
+    if (variant?.active && variant.price_override !== null && variant.price_override !== undefined) {
+      unitPrice = variant.price_override as number;
+    }
+  }
+
   const total = unitPrice * quantity;
 
   const headerStore = await headers();
@@ -86,6 +108,8 @@ export async function POST(request: NextRequest) {
     utm_content: typeof b.utm_content === "string" ? b.utm_content : null,
     client_ip: clientIp,
     client_user_agent: clientUserAgent,
+    variant_id: variantId || undefined,
+    selected_options: rawSelectedOptions || undefined,
   };
 
   const { data: lead, error: insertError } = await supabase

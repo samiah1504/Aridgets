@@ -12,6 +12,8 @@ import type {
   MediaKind,
   MediaProvider,
   MediaSlot,
+  TemplateType,
+  OptionDisplayType,
 } from "./index";
 
 export type Database = {
@@ -82,6 +84,7 @@ export type Database = {
           capi_test_event_code: string | null;
           whatsapp_number: string | null;
           show_on_homepage: boolean;
+          template_type: TemplateType;
           created_at: string;
           updated_at: string;
         };
@@ -101,6 +104,7 @@ export type Database = {
           capi_test_event_code?: string | null;
           whatsapp_number?: string | null;
           show_on_homepage?: boolean;
+          template_type?: TemplateType;
           created_at?: string;
           updated_at?: string;
         };
@@ -119,6 +123,7 @@ export type Database = {
           capi_test_event_code?: string | null;
           whatsapp_number?: string | null;
           show_on_homepage?: boolean;
+          template_type?: TemplateType;
           updated_at?: string;
         };
         Relationships: [];
@@ -199,6 +204,8 @@ export type Database = {
           confirmed_at: string | null;
           dispatched_at: string | null;
           paid_at: string | null;
+          variant_id: string | null;
+          selected_options: Record<string, string> | null;
         };
         Insert: {
           id?: string;
@@ -227,6 +234,8 @@ export type Database = {
           utm_medium?: string | null;
           utm_campaign?: string | null;
           utm_content?: string | null;
+          variant_id?: string | null;
+          selected_options?: Record<string, string> | null;
         };
         Update: {
           status?: LeadStatus;
@@ -243,6 +252,152 @@ export type Database = {
             columns: ["product_id"];
             isOneToOne: false;
             referencedRelation: "products";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      product_options: {
+        Row: {
+          id: string;
+          product_id: string;
+          name: string;
+          display_type: OptionDisplayType;
+          required: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          name: string;
+          display_type?: OptionDisplayType;
+          required?: boolean;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          name?: string;
+          display_type?: OptionDisplayType;
+          required?: boolean;
+          sort_order?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "product_options_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      product_option_values: {
+        Row: {
+          id: string;
+          product_option_id: string;
+          value: string;
+          colour_hex: string | null;
+          image_url: string | null;
+          sort_order: number;
+          active: boolean;
+        };
+        Insert: {
+          id?: string;
+          product_option_id: string;
+          value: string;
+          colour_hex?: string | null;
+          image_url?: string | null;
+          sort_order?: number;
+          active?: boolean;
+        };
+        Update: {
+          value?: string;
+          colour_hex?: string | null;
+          image_url?: string | null;
+          sort_order?: number;
+          active?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "product_option_values_product_option_id_fkey";
+            columns: ["product_option_id"];
+            isOneToOne: false;
+            referencedRelation: "product_options";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      product_variants: {
+        Row: {
+          id: string;
+          product_id: string;
+          sku: string | null;
+          price_override: number | null;
+          compare_at_price_override: number | null;
+          stock_quantity: number | null;
+          active: boolean;
+          image_url: string | null;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          sku?: string | null;
+          price_override?: number | null;
+          compare_at_price_override?: number | null;
+          stock_quantity?: number | null;
+          active?: boolean;
+          image_url?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          sku?: string | null;
+          price_override?: number | null;
+          compare_at_price_override?: number | null;
+          stock_quantity?: number | null;
+          active?: boolean;
+          image_url?: string | null;
+          sort_order?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      product_variant_options: {
+        Row: {
+          variant_id: string;
+          option_value_id: string;
+        };
+        Insert: {
+          variant_id: string;
+          option_value_id: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [
+          {
+            foreignKeyName: "product_variant_options_variant_id_fkey";
+            columns: ["variant_id"];
+            isOneToOne: false;
+            referencedRelation: "product_variants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_variant_options_option_value_id_fkey";
+            columns: ["option_value_id"];
+            isOneToOne: false;
+            referencedRelation: "product_option_values";
             referencedColumns: ["id"];
           }
         ];

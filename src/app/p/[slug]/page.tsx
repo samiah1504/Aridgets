@@ -1,20 +1,12 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import type { ProductContent, ProductTheme, SectionConfig } from "@/types";
+import type { ProductContent, ProductTheme, SectionConfig, ProductOption, ProductVariant, TemplateType, OptionDisplayType } from "@/types";
 import MetaPixel from "@/components/MetaPixel";
-import AnnouncementBar from "@/components/sections/AnnouncementBar";
-import Hero from "@/components/sections/Hero";
-import Problem from "@/components/sections/Problem";
-import Benefits from "@/components/sections/Benefits";
-import MediaGallery from "@/components/sections/MediaGallery";
-import HowItWorks from "@/components/sections/HowItWorks";
-import FeaturesSpecs from "@/components/sections/FeaturesSpecs";
-import SocialProof from "@/components/sections/SocialProof";
-import Urgency from "@/components/sections/Urgency";
-import Guarantee from "@/components/sections/Guarantee";
-import FAQ from "@/components/sections/FAQ";
-import OrderForm from "@/components/sections/OrderForm";
+import GadgetTheme from "@/components/themes/GadgetTheme";
+import FurnitureTheme from "@/components/themes/FurnitureTheme";
+import KidsToyTheme from "@/components/themes/KidsToyTheme";
+import KidsFashionTheme from "@/components/themes/KidsFashionTheme";
 
 type Params = Promise<{ slug: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -23,7 +15,9 @@ async function getProduct(slug: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("products")
-    .select("id, name, slug, status, price, compare_at_price, theme, content, sections, pixel_id")
+    .select(
+      "id, name, slug, status, price, compare_at_price, theme, content, sections, pixel_id, template_type"
+    )
     .eq("slug", slug)
     .eq("status", "live")
     .single();
@@ -34,17 +28,64 @@ async function getMedia(productId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("product_media")
-    .select("*")
+    .select("id, kind, url, provider, slot, sort_order, alt")
     .eq("product_id", productId)
     .order("sort_order");
   return data ?? [];
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Params;
-}): Promise<Metadata> {
+async function getOptions(productId: string): Promise<ProductOption[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("product_options")
+    .select("id, product_id, name, display_type, required, sort_order, product_option_values(id, product_option_id, value, colour_hex, image_url, sort_order, active)")
+    .eq("product_id", productId)
+    .order("sort_order");
+
+  if (!data) return [];
+  return data.map((o) => ({
+    id: o.id,
+    product_id: o.product_id,
+    name: o.name,
+    display_type: o.display_type as OptionDisplayType,
+    required: o.required,
+    sort_order: o.sort_order,
+    values: ((o.product_option_values ?? []) as Array<{
+      id: string; product_option_id: string; value: string;
+      colour_hex: string | null; image_url: string | null;
+      sort_order: number; active: boolean;
+    }>).sort((a, b) => a.sort_order - b.sort_order),
+  }));
+}
+
+async function getVariants(productId: string): Promise<ProductVariant[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("product_variants")
+    .select(
+      "id, product_id, sku, price_override, compare_at_price_override, stock_quantity, active, image_url, sort_order, product_variant_options(option_value_id)"
+    )
+    .eq("product_id", productId)
+    .order("sort_order");
+
+  if (!data) return [];
+  return data.map((v) => ({
+    id: v.id,
+    product_id: v.product_id,
+    sku: v.sku,
+    price_override: v.price_override,
+    compare_at_price_override: v.compare_at_price_override,
+    stock_quantity: v.stock_quantity,
+    active: v.active,
+    image_url: v.image_url,
+    sort_order: v.sort_order,
+    option_value_ids: (
+      (v.product_variant_options ?? []) as Array<{ option_value_id: string }>
+    ).map((pvo) => pvo.option_value_id),
+  }));
+}
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProduct(slug);
   if (!product) return { title: "Product Not Found" };
@@ -69,59 +110,53 @@ export default async function ProductPage({
   const product = await getProduct(slug);
   if (!product) notFound();
 
-  const media = await getMedia(product.id);
+  const [media, options, variants] = await Promise.all([
+    getMedia(product.id),
+    getOptions(product.id),
+    getVariants(product.id),
+  ]);
+
   const theme = product.theme as ProductTheme;
   const content = product.content as ProductContent;
   const sections = (product.sections ?? []) as SectionConfig[];
+  const templateType = (product.template_type ?? "gadget") as TemplateType;
 
   function sp1(key: string): string | undefined {
     const v = sp[key];
     return typeof v === "string" ? v : undefined;
   }
 
-  const sectionMap: Record<string, React.ReactNode> = {
-    announcementBar: <AnnouncementBar text={content.announcementBar} />,
-    hero: (
-      <Hero
-        eyebrow={content.eyebrow}
-        headline={content.headline}
-        subhead={content.subhead}
-        starRating={content.starRating}
-        ctaText={content.ctaText}
-        trustRow={content.trustRow}
-        price={product.price}
-        compareAtPrice={product.compare_at_price}
-      />
-    ),
-    problem: <Problem text={content.problemText} />,
-    benefits: <Benefits items={content.benefits} />,
-    mediaGallery: <MediaGallery media={media} productName={product.name} />,
-    howItWorks: <HowItWorks steps={content.howItWorksSteps} />,
-    featuresSpecs: <FeaturesSpecs items={content.featuresSpecs} />,
-    socialProof: <SocialProof testimonials={content.testimonials} />,
-    urgency: (
-      <Urgency text={content.urgencyText} hasCountdown={content.hasCountdown} />
-    ),
-    guarantee: <Guarantee text={content.guaranteeText} />,
-    faq: <FAQ items={content.faq} />,
-    orderForm: (
-      <OrderForm
-        productId={product.id}
-        productName={product.name}
-        price={product.price}
-        title={content.orderFormTitle}
-        successHeadline={content.orderSuccessHeadline}
-        successBody={content.orderSuccessBody}
-        ctaText={content.ctaText}
-        pixelId={product.pixel_id ?? undefined}
-        fbclid={sp1("fbclid")}
-        utmSource={sp1("utm_source")}
-        utmMedium={sp1("utm_medium")}
-        utmCampaign={sp1("utm_campaign")}
-        utmContent={sp1("utm_content")}
-      />
-    ),
+  const tracking = {
+    pixelId: product.pixel_id ?? undefined,
+    fbclid: sp1("fbclid"),
+    utmSource: sp1("utm_source"),
+    utmMedium: sp1("utm_medium"),
+    utmCampaign: sp1("utm_campaign"),
+    utmContent: sp1("utm_content"),
   };
+
+  const themeProps = {
+    product: {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      compare_at_price: product.compare_at_price,
+      pixel_id: product.pixel_id,
+    },
+    content,
+    theme,
+    sections,
+    media,
+    options,
+    variants,
+    tracking,
+  };
+
+  const ThemeComponent =
+    templateType === "furniture" ? FurnitureTheme
+    : templateType === "kids_toy" ? KidsToyTheme
+    : templateType === "kids_fashion" ? KidsFashionTheme
+    : GadgetTheme;
 
   return (
     <div
@@ -136,19 +171,7 @@ export default async function ProductPage({
       } as React.CSSProperties}
       className="min-h-screen"
     >
-      {sections
-        .filter((s) => s.enabled)
-        .map((s) =>
-          sectionMap[s.key] ? (
-            <div key={s.key}>{sectionMap[s.key]}</div>
-          ) : null
-        )}
-
-      {content.footerText && (
-        <footer className="text-center py-8 text-xs opacity-50 px-4">
-          {content.footerText}
-        </footer>
-      )}
+      <ThemeComponent {...themeProps} />
 
       {product.pixel_id && (
         <MetaPixel
