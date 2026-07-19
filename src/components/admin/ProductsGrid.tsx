@@ -9,6 +9,7 @@ import {
   restoreProduct,
   deleteProduct,
   duplicateProduct,
+  setProductStatus,
 } from "@/app/admin/(protected)/products/actions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -195,6 +196,7 @@ function MoreMenu({
 function ProductCard({ product }: { product: EnrichedProduct }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const [toggling, startToggle] = useTransition();
 
   const media = (product.product_media ?? [])
     .filter((m) => m.kind === "image")
@@ -289,6 +291,32 @@ function ProductCard({ product }: { product: EnrichedProduct }) {
             </span>
           )}
         </div>
+
+        {/* Live / Draft toggle */}
+        {product.status !== "archived" && (
+          <button
+            disabled={toggling}
+            onClick={() =>
+              startToggle(() =>
+                setProductStatus(
+                  product.id,
+                  product.status === "live" ? "draft" : "live"
+                )
+              )
+            }
+            className={`w-full py-2 rounded-xl text-sm font-bold tracking-wide transition disabled:opacity-60 ${
+              product.status === "live"
+                ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                : "bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm shadow-emerald-200"
+            }`}
+          >
+            {toggling
+              ? "Updating…"
+              : product.status === "live"
+              ? "↩ Set to Draft"
+              : "⚡ Go Live"}
+          </button>
+        )}
 
         {/* Action buttons */}
         <div className="flex items-center gap-2 pt-2 border-t border-gray-50">

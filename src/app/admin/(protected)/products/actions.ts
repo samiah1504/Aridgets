@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
+export async function setProductStatus(id: string, status: "live" | "draft") {
+  const supabase = await createClient();
+  await supabase.from("products").update({ status }).eq("id", id);
+  revalidatePath("/admin/products");
+}
+
 export async function archiveProduct(id: string) {
   const supabase = await createClient();
   await supabase.from("products").update({ status: "archived" }).eq("id", id);
