@@ -11,12 +11,16 @@ $$;
 
 -- Role helper — SECURITY DEFINER so it bypasses RLS when reading profiles,
 -- preventing infinite recursion in policies that call get_user_role().
+-- plpgsql (not sql) so the body is not validated at creation time;
+-- the profiles table does not exist yet when this migration runs.
 CREATE OR REPLACE FUNCTION public.get_user_role()
 RETURNS text
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT role FROM public.profiles WHERE id = auth.uid()
+BEGIN
+  RETURN (SELECT role FROM public.profiles WHERE id = auth.uid());
+END;
 $$;
