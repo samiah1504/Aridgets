@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.ad_spend (
   UNIQUE (product_id, date, platform)
 );
 
-CREATE INDEX idx_ad_spend_product_date
+CREATE INDEX IF NOT EXISTS idx_ad_spend_product_date
   ON public.ad_spend (product_id, date DESC);
 
 ALTER TABLE public.ad_spend ENABLE ROW LEVEL SECURITY;

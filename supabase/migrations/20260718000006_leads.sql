@@ -59,12 +59,12 @@ CREATE TABLE IF NOT EXISTS public.leads (
   paid_at          timestamptz
 );
 
-CREATE INDEX idx_leads_product_id    ON public.leads (product_id);
-CREATE INDEX idx_leads_status         ON public.leads (status);
-CREATE INDEX idx_leads_phone          ON public.leads (phone);
-CREATE INDEX idx_leads_order_number   ON public.leads (order_number);
-CREATE INDEX idx_leads_assigned_to    ON public.leads (assigned_to);
-CREATE INDEX idx_leads_created_at     ON public.leads (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_leads_product_id    ON public.leads (product_id);
+CREATE INDEX IF NOT EXISTS idx_leads_status         ON public.leads (status);
+CREATE INDEX IF NOT EXISTS idx_leads_phone          ON public.leads (phone);
+CREATE INDEX IF NOT EXISTS idx_leads_order_number   ON public.leads (order_number);
+CREATE INDEX IF NOT EXISTS idx_leads_assigned_to    ON public.leads (assigned_to);
+CREATE INDEX IF NOT EXISTS idx_leads_created_at     ON public.leads (created_at DESC);
 
 CREATE TRIGGER leads_updated_at
   BEFORE UPDATE ON public.leads

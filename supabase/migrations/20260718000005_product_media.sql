@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.product_media (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_product_media_product_slot
+CREATE INDEX IF NOT EXISTS idx_product_media_product_slot
   ON public.product_media (product_id, slot, sort_order);
 
 ALTER TABLE public.product_media ENABLE ROW LEVEL SECURITY;

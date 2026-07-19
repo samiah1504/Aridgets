@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS public.domains (
   created_at          timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_domains_hostname   ON public.domains (hostname);
-CREATE INDEX idx_domains_product_id ON public.domains (product_id);
+CREATE INDEX IF NOT EXISTS idx_domains_hostname   ON public.domains (hostname);
+CREATE INDEX IF NOT EXISTS idx_domains_product_id ON public.domains (product_id);
 
 ALTER TABLE public.domains ENABLE ROW LEVEL SECURITY;
 

@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.push_subscriptions (
   UNIQUE (user_id, (subscription->>'endpoint'))
 );
 
-CREATE INDEX idx_push_subscriptions_user
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user
   ON public.push_subscriptions (user_id);
 
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;

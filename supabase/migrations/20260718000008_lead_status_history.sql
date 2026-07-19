@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.lead_status_history (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_lead_status_history_lead
+CREATE INDEX IF NOT EXISTS idx_lead_status_history_lead
   ON public.lead_status_history (lead_id, created_at DESC);
 
 ALTER TABLE public.lead_status_history ENABLE ROW LEVEL SECURITY;

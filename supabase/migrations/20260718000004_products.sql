@@ -39,8 +39,8 @@ CREATE TABLE IF NOT EXISTS public.products (
   updated_at           timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_products_slug   ON public.products (slug);
-CREATE INDEX idx_products_status ON public.products (status);
+CREATE INDEX IF NOT EXISTS idx_products_slug   ON public.products (slug);
+CREATE INDEX IF NOT EXISTS idx_products_status ON public.products (status);
 
 CREATE TRIGGER products_updated_at
   BEFORE UPDATE ON public.products
