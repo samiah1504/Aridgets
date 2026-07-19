@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { requirePerm } from "@/lib/auth";
 import ProductsGrid, { type EnrichedProduct } from "@/components/admin/ProductsGrid";
 
 export const metadata: Metadata = { title: "Products" };
 
 export default async function ProductsPage() {
+  const staff = await requirePerm("products.view");
   const supabase = await createClient();
 
   const [{ data: products }, { data: leads }] = await Promise.all([
@@ -32,5 +34,5 @@ export default async function ProductsPage() {
     confirmedCount: leadMap[p.id]?.confirmed ?? 0,
   }));
 
-  return <ProductsGrid products={enriched} />;
+  return <ProductsGrid products={enriched} permissions={staff.permissions} />;
 }

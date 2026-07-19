@@ -2,8 +2,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { requirePerm, hasPerm } from "@/lib/auth";
 import { formatNGN } from "@/lib/utils/currency";
 import LeadActions from "@/components/admin/LeadActions";
+import AssignLead from "@/components/admin/AssignLead";
 import type { LeadStatus } from "@/types";
 
 type Params = Promise<{ id: string }>;
@@ -33,6 +35,11 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function LeadDetailPage({ params }: { params: Params }) {
   const { id } = await params;
+  const staff = await requirePerm(["leads.view_all", "leads.view_assigned"]);
+  const canViewContact = hasPerm(staff.permissions, "customers.view_contact");
+  const canChangeStatus = hasPerm(staff.permissions, "leads.change_status");
+  const canEditNotes = hasPerm(staff.permissions, "leads.edit_notes");
+  const canAssign = hasPerm(staff.permissions, "leads.assign");
   const supabase = await createClient();
 
   const { data: lead } = await supabase
@@ -48,6 +55,15 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
     .select("id, from_status, to_status, note, created_at")
     .eq("lead_id", id)
     .order("created_at", { ascending: false });
+
+  // Staff list for the assignment control (only when the viewer can assign)
+  const { data: assignableStaff } = canAssign
+    ? await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("active", true)
+        .order("full_name")
+    : { data: null };
 
   const product = lead.products as { name: string; slug: string } | null;
   const status = lead.status as LeadStatus;
@@ -87,15 +103,17 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
               Customer
             </h2>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              <div>
-                <dt className="text-gray-400">Phone</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">
-                  <a href={`tel:${lead.phone}`} className="hover:text-indigo-600 transition">
-                    {lead.phone}
-                  </a>
-                </dd>
-              </div>
-              {lead.email && (
+              {canViewContact && (
+                <div>
+                  <dt className="text-gray-400">Phone</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">
+                    <a href={`tel:${lead.phone}`} className="hover:text-indigo-600 transition">
+                      {lead.phone}
+                    </a>
+                  </dd>
+                </div>
+              )}
+              {canViewContact && lead.email && (
                 <div>
                   <dt className="text-gray-400">Email</dt>
                   <dd className="font-medium text-gray-900 mt-0.5">{lead.email}</dd>
@@ -111,10 +129,19 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                   <dd className="font-medium text-gray-900 mt-0.5">{lead.city}</dd>
                 </div>
               )}
-              <div className="col-span-2">
-                <dt className="text-gray-400">Address</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{lead.address}</dd>
-              </div>
+              {canViewContact ? (
+                <div className="col-span-2">
+                  <dt className="text-gray-400">Address</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">{lead.address}</dd>
+                </div>
+              ) : (
+                <div className="col-span-2">
+                  <dd className="text-xs text-gray-400">
+                    Contact details hidden — you don&apos;t have permission to view customer contact
+                    information.
+                  </dd>
+                </div>
+              )}
             </dl>
           </div>
 
@@ -249,12 +276,27 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
         </div>
 
         {/* Right: Actions */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 h-fit">
-          <LeadActions
-            leadId={lead.id}
-            currentStatus={status}
-            callNotes={lead.call_notes}
-          />
+        <div className="space-y-4 h-fit">
+          {(canChangeStatus || canEditNotes) && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <LeadActions
+                leadId={lead.id}
+                currentStatus={status}
+                callNotes={lead.call_notes}
+                canChangeStatus={canChangeStatus}
+                canEditNotes={canEditNotes}
+              />
+            </div>
+          )}
+          {canAssign && assignableStaff && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <AssignLead
+                leadId={lead.id}
+                assignedTo={lead.assigned_to}
+                staff={assignableStaff}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

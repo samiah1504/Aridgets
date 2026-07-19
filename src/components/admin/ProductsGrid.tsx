@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useRef, useEffect, useTransition, useCallback, useDeferredValue } from "react";
 import { formatNGN } from "@/lib/utils/currency";
+import { hasPerm, hasAnyPerm } from "@/lib/permissions";
 import type { ProductTheme } from "@/types";
 import {
   archiveProduct,
@@ -91,9 +92,11 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 
 function MoreMenu({
   product,
+  permissions,
   onClose,
 }: {
   product: EnrichedProduct;
+  permissions: string[];
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -127,47 +130,52 @@ function MoreMenu({
       className="absolute bottom-full right-0 mb-2 z-50 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden"
     >
       <div className="py-1">
-        <button
-          disabled={isPending}
-          onClick={() => run(duplicateProduct)}
-          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
-        >
-          <span className="text-base">📋</span>
-          <span>Duplicate product</span>
-        </button>
-
-        {isArchived ? (
+        {hasPerm(permissions, "products.duplicate") && (
           <button
             disabled={isPending}
-            onClick={() => run(restoreProduct)}
-            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-50"
+            onClick={() => run(duplicateProduct)}
+            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
           >
-            <span className="text-base">✅</span>
-            <span>Restore to Draft</span>
-          </button>
-        ) : (
-          <button
-            disabled={isPending}
-            onClick={() => run(archiveProduct)}
-            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50 transition disabled:opacity-50"
-          >
-            <span className="text-base">📦</span>
-            <span>Archive product</span>
+            <span className="text-base">📋</span>
+            <span>Duplicate product</span>
           </button>
         )}
 
-        <button
-          disabled={isPending}
-          onClick={() => {
-            if (window.confirm(`Delete "${product.name}"?\n\nThis cannot be undone.`)) {
-              run(deleteProduct);
-            }
-          }}
-          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition disabled:opacity-50"
-        >
-          <span className="text-base">🗑️</span>
-          <span>Delete product</span>
-        </button>
+        {hasPerm(permissions, "products.archive") &&
+          (isArchived ? (
+            <button
+              disabled={isPending}
+              onClick={() => run(restoreProduct)}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-50"
+            >
+              <span className="text-base">✅</span>
+              <span>Restore to Draft</span>
+            </button>
+          ) : (
+            <button
+              disabled={isPending}
+              onClick={() => run(archiveProduct)}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50 transition disabled:opacity-50"
+            >
+              <span className="text-base">📦</span>
+              <span>Archive product</span>
+            </button>
+          ))}
+
+        {hasPerm(permissions, "products.delete") && (
+          <button
+            disabled={isPending}
+            onClick={() => {
+              if (window.confirm(`Delete "${product.name}"?\n\nThis cannot be undone.`)) {
+                run(deleteProduct);
+              }
+            }}
+            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+          >
+            <span className="text-base">🗑️</span>
+            <span>Delete product</span>
+          </button>
+        )}
 
         <div className="border-t border-gray-100 my-1" />
 
@@ -193,7 +201,7 @@ function MoreMenu({
 
 // ─── ProductCard ──────────────────────────────────────────────────────────────
 
-function ProductCard({ product }: { product: EnrichedProduct }) {
+function ProductCard({ product, permissions }: { product: EnrichedProduct; permissions: string[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const [toggling, startToggle] = useTransition();
@@ -293,7 +301,7 @@ function ProductCard({ product }: { product: EnrichedProduct }) {
         </div>
 
         {/* Live / Draft toggle */}
-        {product.status !== "archived" && (
+        {product.status !== "archived" && hasPerm(permissions, "products.publish") && (
           <button
             disabled={toggling}
             onClick={() =>
@@ -328,18 +336,22 @@ function ProductCard({ product }: { product: EnrichedProduct }) {
           >
             View ↗
           </a>
-          <Link
-            href={`/admin/products/${product.id}`}
-            className="flex-1 min-w-0 text-center text-xs font-semibold py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition"
-          >
-            Edit
-          </Link>
-          <Link
-            href={`/admin/leads?product=${product.id}`}
-            className="flex-1 min-w-0 text-center text-xs font-medium py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition"
-          >
-            Leads
-          </Link>
+          {hasPerm(permissions, "products.edit") && (
+            <Link
+              href={`/admin/products/${product.id}`}
+              className="flex-1 min-w-0 text-center text-xs font-semibold py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition"
+            >
+              Edit
+            </Link>
+          )}
+          {hasAnyPerm(permissions, ["leads.view_all", "leads.view_assigned"]) && (
+            <Link
+              href={`/admin/leads?product=${product.id}`}
+              className="flex-1 min-w-0 text-center text-xs font-medium py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition"
+            >
+              Leads
+            </Link>
+          )}
           <div className="relative shrink-0">
             <button
               onClick={() => setMenuOpen((o) => !o)}
@@ -348,7 +360,7 @@ function ProductCard({ product }: { product: EnrichedProduct }) {
             >
               ⋮
             </button>
-            {menuOpen && <MoreMenu product={product} onClose={closeMenu} />}
+            {menuOpen && <MoreMenu product={product} permissions={permissions} onClose={closeMenu} />}
           </div>
         </div>
       </div>
@@ -358,7 +370,13 @@ function ProductCard({ product }: { product: EnrichedProduct }) {
 
 // ─── ProductsGrid (default export) ───────────────────────────────────────────
 
-export default function ProductsGrid({ products }: { products: EnrichedProduct[] }) {
+export default function ProductsGrid({
+  products,
+  permissions,
+}: {
+  products: EnrichedProduct[];
+  permissions: string[];
+}) {
   const [query, setQuery]   = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [sort, setSort]     = useState<SortKey>("newest");
@@ -406,12 +424,14 @@ export default function ProductsGrid({ products }: { products: EnrichedProduct[]
             )}
           </div>
         </div>
-        <Link
-          href="/admin/products/new"
-          className="shrink-0 bg-indigo-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-indigo-700 active:bg-indigo-800 transition shadow-sm"
-        >
-          + New product
-        </Link>
+        {hasPerm(permissions, "products.create") && (
+          <Link
+            href="/admin/products/new"
+            className="shrink-0 bg-indigo-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-indigo-700 active:bg-indigo-800 transition shadow-sm"
+          >
+            + New product
+          </Link>
+        )}
       </div>
 
       {/* ── Toolbar: search + filters + sort ── */}
@@ -473,12 +493,14 @@ export default function ProductsGrid({ products }: { products: EnrichedProduct[]
             <p className="text-xl font-bold text-gray-900">No products yet</p>
             <p className="text-sm text-gray-500 mt-1.5">Create your first product and start selling.</p>
           </div>
-          <Link
-            href="/admin/products/new"
-            className="bg-indigo-600 text-white font-semibold px-6 py-3 rounded-xl hover:bg-indigo-700 transition shadow-sm"
-          >
-            Create your first product
-          </Link>
+          {hasPerm(permissions, "products.create") && (
+            <Link
+              href="/admin/products/new"
+              className="bg-indigo-600 text-white font-semibold px-6 py-3 rounded-xl hover:bg-indigo-700 transition shadow-sm"
+            >
+              Create your first product
+            </Link>
+          )}
         </div>
       ) : visible.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
@@ -501,7 +523,7 @@ export default function ProductsGrid({ products }: { products: EnrichedProduct[]
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {visible.map((p) => (
-              <ProductCard key={p.id} product={p} />
+              <ProductCard key={p.id} product={p} permissions={permissions} />
             ))}
           </div>
         </>

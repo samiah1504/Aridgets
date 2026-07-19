@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { getStaff } from "@/lib/auth";
+import { hasPerm } from "@/lib/permissions";
 import { sendCAPIEvent } from "@/lib/capi";
 import type { LeadStatus } from "@/types";
 import type { Database } from "@/types/database";
@@ -45,6 +47,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
 
   if (newStatus && !VALID_STATUSES.includes(newStatus as LeadStatus)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+
+  // Granular permission checks
+  const staff = await getStaff();
+  if (!staff) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (newStatus && !hasPerm(staff.permissions, "leads.change_status")) {
+    return NextResponse.json(
+      { error: "You do not have permission to change lead status" },
+      { status: 403 }
+    );
+  }
+  if (call_notes !== undefined && !hasPerm(staff.permissions, "leads.edit_notes")) {
+    return NextResponse.json(
+      { error: "You do not have permission to edit lead notes" },
+      { status: 403 }
+    );
   }
 
   // Fetch current lead

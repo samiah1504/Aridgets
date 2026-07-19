@@ -18,6 +18,7 @@ Full build spec: `BUILD_BRIEF.md`
 - Order numbers: `{ORDER_PREFIX}-{6-digit zero-padded}`, prefix from `settings` table.
 - CAPI Purchase fires only when a lead transitions to `confirmed` — never on form submit. Guard against double-fire (`event_id_purchase` must be null).
 - Lead pipeline: `new` → `confirmed` (responsibility ends here) | drop statuses: `not_buying`, `cancelled`, `not_picking_calls`. No fulfilment statuses — Crift Shop is lead-gen, not order fulfilment. `confirmed_at`/`dropped_at` timestamp the transitions.
+- RBAC: permissions live on `roles.permissions` (text[] of keys from `src/lib/permissions.ts`; `*` = all). RLS enforces via `has_perm()` in Postgres. Server pages guard with `requirePerm()` from `src/lib/auth.ts`; UI gates with `hasPerm()`. Customer-support visibility is scoped by `product_assignments`. Important actions log to `audit_log` via DB triggers.
 
 ## Build phases
 0. Setup (done) — Next.js + Tailwind + Supabase client + helpers

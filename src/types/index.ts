@@ -1,4 +1,12 @@
-export type UserRole = "owner" | "admin" | "agent" | "dispatch";
+export interface Role {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  is_system: boolean;
+  permissions: string[];
+  created_at: string;
+}
 
 export type TemplateType = "furniture" | "gadget" | "kids_toy" | "kids_fashion";
 export type OptionDisplayType = "buttons" | "colour_swatch" | "dropdown";

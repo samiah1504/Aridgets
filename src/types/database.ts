@@ -5,7 +5,6 @@ import type {
   ProductTheme,
   ProductContent,
   SectionConfig,
-  UserRole,
   ProductStatus,
   LeadStatus,
   DomainStatus,
@@ -23,23 +22,125 @@ export type Database = {
         Row: {
           id: string;
           full_name: string | null;
-          role: UserRole;
+          email: string | null;
+          role_id: string | null;
           active: boolean;
           created_at: string;
         };
         Insert: {
           id: string;
           full_name?: string | null;
-          role?: UserRole;
+          email?: string | null;
+          role_id?: string | null;
           active?: boolean;
           created_at?: string;
         };
         Update: {
           full_name?: string | null;
-          role?: UserRole;
+          email?: string | null;
+          role_id?: string | null;
           active?: boolean;
         };
+        Relationships: [
+          {
+            foreignKeyName: "profiles_role_id_fkey";
+            columns: ["role_id"];
+            isOneToOne: false;
+            referencedRelation: "roles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      roles: {
+        Row: {
+          id: string;
+          key: string;
+          name: string;
+          description: string | null;
+          is_system: boolean;
+          permissions: string[];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          key: string;
+          name: string;
+          description?: string | null;
+          is_system?: boolean;
+          permissions?: string[];
+          created_at?: string;
+        };
+        Update: {
+          key?: string;
+          name?: string;
+          description?: string | null;
+          permissions?: string[];
+        };
         Relationships: [];
+      };
+
+      product_assignments: {
+        Row: {
+          product_id: string;
+          profile_id: string;
+          created_at: string;
+        };
+        Insert: {
+          product_id: string;
+          profile_id: string;
+          created_at?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [
+          {
+            foreignKeyName: "product_assignments_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_assignments_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      audit_log: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          action: string;
+          entity_type: string | null;
+          entity_id: string | null;
+          detail: Record<string, unknown> | null;
+          ip: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          action: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          detail?: Record<string, unknown> | null;
+          ip?: string | null;
+          created_at?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       settings: {

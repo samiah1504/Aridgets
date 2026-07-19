@@ -8,6 +8,8 @@ interface Props {
   leadId: string;
   currentStatus: LeadStatus;
   callNotes: string | null;
+  canChangeStatus: boolean;
+  canEditNotes: boolean;
 }
 
 type NextAction = { label: string; status: LeadStatus; style: string };
@@ -35,7 +37,13 @@ const NEXT_ACTIONS: Record<LeadStatus, NextAction[]> = {
   ],
 };
 
-export default function LeadActions({ leadId, currentStatus, callNotes }: Props) {
+export default function LeadActions({
+  leadId,
+  currentStatus,
+  callNotes,
+  canChangeStatus,
+  canEditNotes,
+}: Props) {
   const router = useRouter();
   const [notes, setNotes] = useState(callNotes ?? "");
   const [transitioning, setTransitioning] = useState<LeadStatus | null>(null);
@@ -76,7 +84,7 @@ export default function LeadActions({ leadId, currentStatus, callNotes }: Props)
     }
   }
 
-  const actions = NEXT_ACTIONS[currentStatus] ?? [];
+  const actions = canChangeStatus ? (NEXT_ACTIONS[currentStatus] ?? []) : [];
 
   return (
     <div className="space-y-6">
@@ -100,6 +108,7 @@ export default function LeadActions({ leadId, currentStatus, callNotes }: Props)
         </div>
       )}
 
+      {canEditNotes && (
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
           Call notes
@@ -119,6 +128,7 @@ export default function LeadActions({ leadId, currentStatus, callNotes }: Props)
           {savingNotes ? "Saving…" : "Save notes"}
         </button>
       </div>
+      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>

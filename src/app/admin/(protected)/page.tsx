@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getStaff, hasPerm, hasAnyPerm } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { formatNGN } from "@/lib/utils/currency";
 import type { LeadStatus } from "@/types";
 
@@ -31,6 +33,14 @@ const STATUS_LABELS: Record<LeadStatus, string> = {
 };
 
 export default async function DashboardPage() {
+  const staff = await getStaff();
+  if (!staff) redirect("/admin/login");
+
+  // Staff without analytics access get a personal work dashboard instead
+  if (!hasPerm(staff.permissions, "analytics.view")) {
+    return <MyWorkDashboard permissions={staff.permissions} name={staff.fullName} />;
+  }
+
   const supabase = await createClient();
 
   const [{ data: allLeads }, { data: recentLeads }, { data: products }] = await Promise.all([
@@ -243,6 +253,112 @@ function StatCard({
       <p className="text-xs font-medium text-gray-400 mb-1">{label}</p>
       <p className="text-2xl font-bold text-gray-900 leading-tight">{value}</p>
       {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+// ── Personal dashboard for staff without analytics access ────────────────────
+
+async function MyWorkDashboard({
+  permissions,
+  name,
+}: {
+  permissions: string[];
+  name: string | null;
+}) {
+  const supabase = await createClient();
+  const canSeeLeads = hasAnyPerm(permissions, ["leads.view_all", "leads.view_assigned"]);
+  const canSeeProducts = hasPerm(permissions, "products.view");
+
+  // RLS scopes both queries to what this member may see
+  const [{ data: myLeads }, { data: myProducts }] = await Promise.all([
+    canSeeLeads
+      ? supabase.from("leads").select("id, status, created_at")
+      : Promise.resolve({ data: null }),
+    canSeeProducts
+      ? supabase.from("products").select("id, status")
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const leadCounts = (myLeads ?? []).reduce<Record<string, number>>((acc, l) => {
+    acc[l.status] = (acc[l.status] ?? 0) + 1;
+    return acc;
+  }, {});
+  const todaysFollowUps = (myLeads ?? []).filter(
+    (l) => l.status === "new" || (l.status === "not_picking_calls" && new Date(l.created_at) >= todayStart)
+  ).length;
+
+  const productCounts = (myProducts ?? []).reduce<Record<string, number>>((acc, p) => {
+    acc[p.status] = (acc[p.status] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-xl font-bold text-gray-900">
+        Welcome{name ? `, ${name.split(" ")[0]}` : ""}
+      </h1>
+
+      {canSeeLeads && (
+        <div>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            My Leads
+          </h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Link href="/admin/leads?status=new" className="block">
+              <StatCard label="Today's follow-ups" value={todaysFollowUps.toString()} />
+            </Link>
+            <Link href="/admin/leads?status=new" className="block">
+              <StatCard label="New leads" value={(leadCounts.new ?? 0).toString()} />
+            </Link>
+            <Link href="/admin/leads?status=confirmed" className="block">
+              <StatCard label="Confirmed" value={(leadCounts.confirmed ?? 0).toString()} />
+            </Link>
+            <Link href="/admin/leads?status=not_buying" className="block">
+              <StatCard label="Not buying" value={(leadCounts.not_buying ?? 0).toString()} />
+            </Link>
+          </div>
+          <Link
+            href="/admin/leads"
+            className="inline-block mt-3 text-sm text-indigo-600 hover:text-indigo-800 font-medium transition"
+          >
+            Open my leads →
+          </Link>
+        </div>
+      )}
+
+      {canSeeProducts && (
+        <div>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            My Products
+          </h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard label="Drafts" value={(productCounts.draft ?? 0).toString()} />
+            <StatCard label="Published" value={(productCounts.live ?? 0).toString()} />
+            <StatCard label="Archived" value={(productCounts.archived ?? 0).toString()} />
+            <StatCard
+              label="Total"
+              value={((myProducts ?? []).length).toString()}
+            />
+          </div>
+          <Link
+            href="/admin/products"
+            className="inline-block mt-3 text-sm text-indigo-600 hover:text-indigo-800 font-medium transition"
+          >
+            Open products →
+          </Link>
+        </div>
+      )}
+
+      {!canSeeLeads && !canSeeProducts && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400">
+          <p className="font-medium">No workspace access yet.</p>
+          <p className="text-sm mt-1">Ask your administrator to assign you a role.</p>
+        </div>
+      )}
     </div>
   );
 }

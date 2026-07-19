@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { hasPerm } from "@/lib/permissions";
 import { NIGERIAN_STATES } from "@/lib/constants/states";
 import type { Database } from "@/types/database";
 import type { ProductContent, ProductTheme, SectionConfig, TemplateType } from "@/types";
@@ -157,14 +158,19 @@ function StringList({ value, onChange, placeholder }: { value: string[]; onChang
 
 interface Props {
   product: ProductRow;
+  permissions: string[];
 }
 
-export default function ProductForm({ product: initial }: Props) {
+export default function ProductForm({ product: initial, permissions }: Props) {
   const [product, setProduct] = useState<ProductRow>(initial);
   const [activeTab, setActiveTab] = useState<Tab>("Basic");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+
+  const canPublish = hasPerm(permissions, "products.publish");
+  const canEditTracking = hasPerm(permissions, "tracking.edit");
+  const visibleTabs = TABS.filter((t) => t !== "Tracking" || canEditTracking);
 
   const content = product.content as ProductContent;
   const theme = product.theme as ProductTheme;
@@ -201,7 +207,6 @@ export default function ProductForm({ product: initial }: Props) {
       .update({
         name: product.name,
         slug: product.slug,
-        status: product.status,
         price: product.price,
         compare_at_price: product.compare_at_price,
         whatsapp_number: product.whatsapp_number,
@@ -209,10 +214,15 @@ export default function ProductForm({ product: initial }: Props) {
         theme: product.theme,
         content: product.content,
         sections: product.sections,
-        pixel_id: product.pixel_id,
-        capi_access_token: product.capi_access_token,
-        capi_test_event_code: product.capi_test_event_code,
         template_type: product.template_type as TemplateType,
+        ...(canPublish ? { status: product.status } : {}),
+        ...(canEditTracking
+          ? {
+              pixel_id: product.pixel_id,
+              capi_access_token: product.capi_access_token,
+              capi_test_event_code: product.capi_test_event_code,
+            }
+          : {}),
       })
       .eq("id", product.id);
 
@@ -235,11 +245,15 @@ export default function ProductForm({ product: initial }: Props) {
         <Field label="Slug" hint="Used in the URL: /p/your-slug">
           <FormInput value={product.slug} onChange={(v) => setField("slug", v.toLowerCase().replace(/\s+/g, "-"))} />
         </Field>
-        <Field label="Status">
+        <Field
+          label="Status"
+          hint={canPublish ? undefined : "You don't have permission to publish or unpublish"}
+        >
           <select
             value={product.status}
+            disabled={!canPublish}
             onChange={(e) => setField("status", e.target.value as ProductRow["status"])}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <option value="draft">Draft</option>
             <option value="live">Live</option>
@@ -711,7 +725,7 @@ export default function ProductForm({ product: initial }: Props) {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-200">
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}

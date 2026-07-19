@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { requirePerm, hasPerm } from "@/lib/auth";
 import { formatNGN } from "@/lib/utils/currency";
 import type { LeadStatus } from "@/types";
 
@@ -34,6 +35,8 @@ const TABS: Array<{ value: string; label: string }> = [
 ];
 
 export default async function LeadsPage({ searchParams }: { searchParams: SearchParams }) {
+  const staff = await requirePerm(["leads.view_all", "leads.view_assigned"]);
+  const canViewContact = hasPerm(staff.permissions, "customers.view_contact");
   const { status } = await searchParams;
   const supabase = await createClient();
 
@@ -109,7 +112,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <div className="text-gray-500 text-xs space-y-0.5">
-                      <p>{lead.phone}</p>
+                      {canViewContact && <p>{lead.phone}</p>}
                       {product?.name && (
                         <p className="truncate max-w-[180px]">{product.name}</p>
                       )}
@@ -156,7 +159,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
                       <tr key={lead.id} className="hover:bg-gray-50 transition">
                         <td className="px-4 py-3 font-mono text-xs text-gray-500">{lead.order_number}</td>
                         <td className="px-4 py-3 font-medium text-gray-900">{lead.name}</td>
-                        <td className="px-4 py-3 text-gray-600">{lead.phone}</td>
+                        <td className="px-4 py-3 text-gray-600">{canViewContact ? lead.phone : "•••"}</td>
                         <td className="px-4 py-3 text-gray-600">{lead.state}</td>
                         <td className="px-4 py-3 text-gray-500 text-xs">{product?.name ?? "—"}</td>
                         <td className="px-4 py-3 text-gray-700 font-medium">{formatNGN(lead.total)}</td>
