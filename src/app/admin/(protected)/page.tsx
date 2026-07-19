@@ -52,11 +52,8 @@ export default async function DashboardPage() {
   weekStart.setHours(0, 0, 0, 0);
 
   const todayLeads = leads.filter((l) => new Date(l.created_at) >= todayStart).length;
+  const weekLeads = leads.filter((l) => new Date(l.created_at) >= weekStart).length;
   const confirmedLeads = leads.filter((l) => l.status === "confirmed");
-  const totalRevenue = confirmedLeads.reduce((s, l) => s + l.total, 0);
-  const weekRevenue = confirmedLeads
-    .filter((l) => new Date(l.created_at) >= weekStart)
-    .reduce((s, l) => s + l.total, 0);
   const conversionRate =
     leads.length > 0 ? ((confirmedLeads.length / leads.length) * 100).toFixed(1) : "0.0";
 
@@ -73,7 +70,6 @@ export default async function DashboardPage() {
       ...p,
       leadCount: pLeads.length,
       confirmedCount: pConfirmed.length,
-      revenue: pConfirmed.reduce((s, l) => s + l.total, 0),
     };
   });
 
@@ -84,12 +80,12 @@ export default async function DashboardPage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Today's leads" value={todayLeads.toString()} />
-        <StatCard label="This week's revenue" value={formatNGN(weekRevenue)} />
-        <StatCard label="Confirmed orders" value={confirmedLeads.length.toString()} />
+        <StatCard label="This week's leads" value={weekLeads.toString()} />
+        <StatCard label="Confirmed leads" value={confirmedLeads.length.toString()} />
         <StatCard
-          label="All-time revenue"
-          value={formatNGN(totalRevenue)}
-          sub={`${conversionRate}% conversion`}
+          label="Confirmation rate"
+          value={`${conversionRate}%`}
+          sub={`${confirmedLeads.length} of ${leads.length} leads`}
         />
       </div>
 
@@ -196,8 +192,7 @@ export default async function DashboardPage() {
                 <th className="px-5 py-3">Product</th>
                 <th className="px-5 py-3 text-right">Leads</th>
                 <th className="px-5 py-3 text-right">Confirmed</th>
-                <th className="px-5 py-3 text-right">Revenue</th>
-                <th className="px-5 py-3 text-right">Conv.</th>
+                <th className="px-5 py-3 text-right">Conf. rate</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -219,9 +214,6 @@ export default async function DashboardPage() {
                   </td>
                   <td className="px-5 py-3 text-right text-gray-600">{p.leadCount}</td>
                   <td className="px-5 py-3 text-right text-gray-600">{p.confirmedCount}</td>
-                  <td className="px-5 py-3 text-right font-medium text-gray-800 whitespace-nowrap">
-                    {formatNGN(p.revenue)}
-                  </td>
                   <td className="px-5 py-3 text-right text-gray-500">
                     {p.leadCount > 0
                       ? `${((p.confirmedCount / p.leadCount) * 100).toFixed(1)}%`
