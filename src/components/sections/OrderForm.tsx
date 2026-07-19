@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { NIGERIAN_STATES } from "@/lib/constants/states";
-import { NIGERIAN_LGAS } from "@/lib/constants/lgas";
 import { formatNGN } from "@/lib/utils/currency";
 import { isValidNGPhone } from "@/lib/utils/phone";
 
@@ -55,7 +54,7 @@ export default function OrderForm({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [state, setState] = useState("");
-  const [lga, setLga] = useState("");
+  const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -70,7 +69,6 @@ export default function OrderForm({
     setFbc(getCookie("_fbc"));
   }, []);
 
-  const lgas = state ? (NIGERIAN_LGAS[state] ?? []) : [];
   const total = price * quantity;
 
   const validate = useCallback(() => {
@@ -104,7 +102,7 @@ export default function OrderForm({
           name: name.trim(),
           phone: phone.trim(),
           state,
-          lga: lga || undefined,
+          city: city.trim() || undefined,
           address: address.trim(),
           quantity,
           fbp,
@@ -244,10 +242,7 @@ export default function OrderForm({
             <select
               id="of-state"
               value={state}
-              onChange={(e) => {
-                setState(e.target.value);
-                setLga("");
-              }}
+              onChange={(e) => setState(e.target.value)}
               className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 transition bg-white ${
                 errors.state
                   ? "border-red-400 focus:ring-red-200"
@@ -266,27 +261,24 @@ export default function OrderForm({
             )}
           </div>
 
-          {/* LGA */}
-          {lgas.length > 0 && (
-            <div>
-              <label className="block text-sm font-semibold mb-1" htmlFor="of-lga">
-                LGA <span className="text-gray-400 font-normal">(optional)</span>
-              </label>
-              <select
-                id="of-lga"
-                value={lga}
-                onChange={(e) => setLga(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none bg-white focus:ring-2 focus:ring-[var(--product-primary)]/30 focus:border-[var(--product-primary)] transition"
-              >
-                <option value="">— Select LGA —</option>
-                {lgas.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* City / Town */}
+          <div>
+            <label className="block text-sm font-semibold mb-1" htmlFor="of-city">
+              City / Town <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              id="of-city"
+              type="text"
+              autoComplete="address-level2"
+              autoCorrect="off"
+              autoCapitalize="words"
+              spellCheck={false}
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="e.g. Ikeja"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[var(--product-primary)]/30 focus:border-[var(--product-primary)] transition"
+            />
+          </div>
 
           {/* Address */}
           <div>

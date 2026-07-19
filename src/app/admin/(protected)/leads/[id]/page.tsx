@@ -105,10 +105,10 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 <dt className="text-gray-400">State</dt>
                 <dd className="font-medium text-gray-900 mt-0.5">{lead.state}</dd>
               </div>
-              {lead.lga && (
+              {lead.city && (
                 <div>
-                  <dt className="text-gray-400">LGA</dt>
-                  <dd className="font-medium text-gray-900 mt-0.5">{lead.lga}</dd>
+                  <dt className="text-gray-400">City / Town</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">{lead.city}</dd>
                 </div>
               )}
               <div className="col-span-2">

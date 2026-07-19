@@ -181,7 +181,7 @@ export type Database = {
           email: string | null;
           address: string;
           state: string;
-          lga: string | null;
+          city: string | null;
           quantity: number;
           unit_price: number;
           total: number;
@@ -215,7 +215,7 @@ export type Database = {
           email?: string | null;
           address: string;
           state: string;
-          lga?: string | null;
+          city?: string | null;
           quantity?: number;
           unit_price: number;
           total: number;

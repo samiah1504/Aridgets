@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   const rawPhone = typeof b.phone === "string" ? b.phone.trim() : "";
   const rawState = typeof b.state === "string" ? b.state.trim() : "";
   const rawAddress = typeof b.address === "string" ? b.address.trim() : "";
-  const rawLga = typeof b.lga === "string" ? b.lga.trim() : null;
+  const rawCity = typeof b.city === "string" ? b.city.trim() : null;
   const quantity = Math.max(1, Math.round(Number(b.quantity ?? 1)));
 
   if (!productId) return NextResponse.json({ error: "product_id is required" }, { status: 400 });
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     name: rawName,
     phone: normaliseNGPhone(rawPhone),
     state: rawState,
-    lga: rawLga || null,
+    city: rawCity || null,
     address: rawAddress,
     quantity,
     unit_price: unitPrice,

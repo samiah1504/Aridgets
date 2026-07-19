@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { NIGERIAN_STATES } from "@/lib/constants/states";
-import { NIGERIAN_LGAS } from "@/lib/constants/lgas";
 import { formatNGN } from "@/lib/utils/currency";
 import { isValidNGPhone } from "@/lib/utils/phone";
 import type { ProductOption, ProductVariant } from "@/types";
@@ -83,7 +82,7 @@ export default function VariantAwareOrderForm({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [state, setState] = useState("");
-  const [lga, setLga] = useState("");
+  const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -111,7 +110,6 @@ export default function VariantAwareOrderForm({
     matchedVariant?.compare_at_price_override ?? compareAtPrice ?? null;
   const total = effectivePrice * quantity;
 
-  const lgas = state ? (NIGERIAN_LGAS[state] ?? []) : [];
   const outOfStock = isOutOfStock(matchedVariant);
 
   function selectValue(optionId: string, valueId: string) {
@@ -162,7 +160,7 @@ export default function VariantAwareOrderForm({
           name: name.trim(),
           phone: phone.trim(),
           state,
-          lga: lga || undefined,
+          city: city.trim() || undefined,
           address: address.trim(),
           quantity,
           fbp, fbc, fbclid,
@@ -231,6 +229,84 @@ export default function VariantAwareOrderForm({
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="px-6 py-6 space-y-5">
+          {/* Standard form fields */}
+          <div>
+            <label className="block text-sm font-semibold mb-1" htmlFor="of-name">
+              Full Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="of-name" type="text" autoComplete="name"
+              autoCorrect="off" autoCapitalize="words" spellCheck={false}
+              value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Amaka Johnson"
+              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 transition ${
+                errors.name ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
+              }`}
+            />
+            {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1" htmlFor="of-phone">
+              WhatsApp / Phone <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="of-phone" type="tel" autoComplete="tel" inputMode="tel"
+              value={phone} onChange={(e) => setPhone(e.target.value)}
+              placeholder="e.g. 08012345678"
+              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 transition ${
+                errors.phone ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
+              }`}
+            />
+            {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1" htmlFor="of-state">
+              State <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="of-state" value={state}
+              onChange={(e) => setState(e.target.value)}
+              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 bg-white transition ${
+                errors.state ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
+              }`}
+            >
+              <option value="">— Select State —</option>
+              {NIGERIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            {errors.state && <p className="text-xs text-red-500 mt-1">{errors.state}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1" htmlFor="of-city">
+              City / Town <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              id="of-city" type="text" autoComplete="address-level2"
+              autoCorrect="off" autoCapitalize="words" spellCheck={false}
+              value={city} onChange={(e) => setCity(e.target.value)}
+              placeholder="e.g. Ikeja"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500 transition"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1" htmlFor="of-address">
+              Delivery Address <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              id="of-address" rows={3}
+              autoCorrect="off" autoCapitalize="sentences" spellCheck={false}
+              value={address} onChange={(e) => setAddress(e.target.value)}
+              placeholder="House number, street, nearest landmark"
+              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 transition resize-none ${
+                errors.address ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
+              }`}
+            />
+            {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address}</p>}
+          </div>
+
           {/* Variant selectors */}
           {activeOptions.map((option) => {
             const activeVals = option.values.filter((v) => v.active);
@@ -323,86 +399,6 @@ export default function VariantAwareOrderForm({
               )}
             </div>
           )}
-
-          {/* Standard form fields */}
-          <div>
-            <label className="block text-sm font-semibold mb-1" htmlFor="of-name">
-              Full Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="of-name" type="text" autoComplete="name"
-              autoCorrect="off" autoCapitalize="words" spellCheck={false}
-              value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Amaka Johnson"
-              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 transition ${
-                errors.name ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
-              }`}
-            />
-            {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold mb-1" htmlFor="of-phone">
-              WhatsApp / Phone <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="of-phone" type="tel" autoComplete="tel" inputMode="tel"
-              value={phone} onChange={(e) => setPhone(e.target.value)}
-              placeholder="e.g. 08012345678"
-              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 transition ${
-                errors.phone ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
-              }`}
-            />
-            {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold mb-1" htmlFor="of-state">
-              State <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="of-state" value={state}
-              onChange={(e) => { setState(e.target.value); setLga(""); }}
-              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 bg-white transition ${
-                errors.state ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
-              }`}
-            >
-              <option value="">— Select State —</option>
-              {NIGERIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            {errors.state && <p className="text-xs text-red-500 mt-1">{errors.state}</p>}
-          </div>
-
-          {lgas.length > 0 && (
-            <div>
-              <label className="block text-sm font-semibold mb-1" htmlFor="of-lga">
-                LGA <span className="text-gray-400 font-normal">(optional)</span>
-              </label>
-              <select
-                id="of-lga" value={lga} onChange={(e) => setLga(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none bg-white focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500 transition"
-              >
-                <option value="">— Select LGA —</option>
-                {lgas.map((l) => <option key={l} value={l}>{l}</option>)}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-semibold mb-1" htmlFor="of-address">
-              Delivery Address <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              id="of-address" rows={3}
-              autoCorrect="off" autoCapitalize="sentences" spellCheck={false}
-              value={address} onChange={(e) => setAddress(e.target.value)}
-              placeholder="House number, street, nearest landmark"
-              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 transition resize-none ${
-                errors.address ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
-              }`}
-            />
-            {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address}</p>}
-          </div>
 
           <div>
             <label className="block text-sm font-semibold mb-1">Quantity</label>
