@@ -176,6 +176,7 @@ export default async function ProductPage({
       {product.pixel_id && (
         <MetaPixel
           pixelId={product.pixel_id}
+          productId={product.id}
           productName={product.name}
           price={product.price}
         />

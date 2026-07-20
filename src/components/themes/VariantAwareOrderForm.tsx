@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { NIGERIAN_STATES } from "@/lib/constants/states";
 import { SERIOUS_BUYER_DEFAULTS } from "@/lib/config";
+import { getTrackingSession, beacon } from "@/components/MetaPixel";
 import { formatNGN } from "@/lib/utils/currency";
 import { isValidNGPhone } from "@/lib/utils/phone";
 import type { ProductOption, ProductVariant, SeriousBuyerNotice } from "@/types";
@@ -97,10 +98,12 @@ export default function VariantAwareOrderForm({
   const [apiError, setApiError] = useState("");
   const [fbp, setFbp] = useState<string | undefined>();
   const [fbc, setFbc] = useState<string | undefined>();
+  const [testMode, setTestMode] = useState(false);
 
   useEffect(() => {
     setFbp(getCookie("_fbp"));
     setFbc(getCookie("_fbc"));
+    setTestMode(getTrackingSession().test);
   }, []);
 
   const activeOptions = options.filter((o) => o.values.some((v) => v.active));
@@ -160,12 +163,16 @@ export default function VariantAwareOrderForm({
       }
     });
 
+    const tracking = getTrackingSession();
+
     try {
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           product_id: productId,
+          session_id: tracking.sessionId,
+          is_test: tracking.test,
           name: name.trim(),
           phone: phone.trim(),
           state,
@@ -203,6 +210,19 @@ export default function VariantAwareOrderForm({
         );
       }
 
+      // Report the browser-side Lead event to the Tracking Center
+      beacon({
+        product_id: productId,
+        event_name: "Lead",
+        event_id: result.event_id_lead,
+        session_id: tracking.sessionId,
+        test: tracking.test,
+        pixel_loaded:
+          typeof window !== "undefined" &&
+          typeof window.fbq === "function" &&
+          !!window.fbq.callMethod,
+      });
+
       document.getElementById("order")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch {
       setApiError("Network error. Please check your connection and try again.");
@@ -239,6 +259,12 @@ export default function VariantAwareOrderForm({
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="px-6 py-6 space-y-5">
+          {testMode && (
+            <div className="rounded-xl bg-orange-100 border border-orange-300 px-4 py-2.5 text-xs font-bold text-orange-800 text-center">
+              🧪 TEST MODE — this order will be tagged as a test lead
+            </div>
+          )}
+
           {/* Serious Buyers notice */}
           {noticeEnabled && (
             <div

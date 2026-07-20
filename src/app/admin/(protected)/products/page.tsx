@@ -16,7 +16,7 @@ export default async function ProductsPage() {
         "id, name, slug, status, price, compare_at_price, theme, pixel_id, updated_at, created_at, product_media(url, slot, kind, sort_order)"
       )
       .order("created_at", { ascending: false }),
-    supabase.from("leads").select("product_id, status"),
+    supabase.from("leads").select("product_id, status").eq("is_test", false),
   ]);
 
   // Aggregate lead counts per product

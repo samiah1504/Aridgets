@@ -44,7 +44,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
 
   let query = supabase
     .from("leads")
-    .select("id, order_number, name, phone, state, total, status, created_at, products(name)")
+    .select("id, order_number, name, phone, state, total, status, is_test, created_at, products(name)")
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -101,7 +101,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
                   <Link href={`/admin/leads/${lead.id}`} className="block">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">{lead.name}</p>
+                        <p className="font-semibold text-gray-900 text-sm">
+                          {lead.name}
+                          {lead.is_test && (
+                            <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 align-middle">
+                              TEST
+                            </span>
+                          )}
+                        </p>
                         <p className="text-xs text-gray-400 font-mono mt-0.5">{lead.order_number}</p>
                       </div>
                       <span
@@ -173,7 +180,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
                     return (
                       <tr key={lead.id} className="hover:bg-gray-50 transition">
                         <td className="px-4 py-3 font-mono text-xs text-gray-500">{lead.order_number}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900">{lead.name}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          {lead.name}
+                          {lead.is_test && (
+                            <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">
+                              TEST
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-gray-600">{canViewContact ? lead.phone : "•••"}</td>
                         <td className="px-4 py-3 text-gray-600">{lead.state}</td>
                         <td className="px-4 py-3 text-gray-500 text-xs">{product?.name ?? "—"}</td>

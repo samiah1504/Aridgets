@@ -44,10 +44,11 @@ export default async function DashboardPage() {
   const supabase = await createClient();
 
   const [{ data: allLeads }, { data: recentLeads }, { data: products }] = await Promise.all([
-    supabase.from("leads").select("id, status, total, created_at, product_id"),
+    supabase.from("leads").select("id, status, total, created_at, product_id").eq("is_test", false),
     supabase
       .from("leads")
       .select("id, order_number, name, total, status, created_at, products(name)")
+      .eq("is_test", false)
       .order("created_at", { ascending: false })
       .limit(8),
     supabase.from("products").select("id, name, status").order("created_at", { ascending: false }),
@@ -273,7 +274,7 @@ async function MyWorkDashboard({
   // RLS scopes both queries to what this member may see
   const [{ data: myLeads }, { data: myProducts }] = await Promise.all([
     canSeeLeads
-      ? supabase.from("leads").select("id, status, created_at, follow_up_at")
+      ? supabase.from("leads").select("id, status, created_at, follow_up_at").eq("is_test", false)
       : Promise.resolve({ data: null }),
     canSeeProducts
       ? supabase.from("products").select("id, status")

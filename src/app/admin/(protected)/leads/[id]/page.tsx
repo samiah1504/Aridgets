@@ -52,7 +52,11 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
 
   if (!lead) notFound();
 
-  const [{ data: history }, { data: activities }] = await Promise.all([
+  const trackingFilter = lead.tracking_session_id
+    ? `lead_id.eq.${id},session_id.eq.${lead.tracking_session_id}`
+    : `lead_id.eq.${id}`;
+
+  const [{ data: history }, { data: activities }, { data: trackingEvents }] = await Promise.all([
     supabase
       .from("lead_status_history")
       .select("id, from_status, to_status, note, created_at")
@@ -63,6 +67,12 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
       .select("id, actor_name, kind, detail, created_at")
       .eq("lead_id", id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("tracking_events")
+      .select("id, event_name, source, status, error, created_at")
+      .or(trackingFilter)
+      .order("created_at", { ascending: false })
+      .limit(50),
   ]);
 
   // Staff list for the assignment control (only when the viewer can assign)
@@ -95,6 +105,17 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
     contacted: "marked the customer as contacted",
     note: "added a note",
   };
+  function trackingLabel(e: {
+    event_name: string;
+    source: string;
+    status: string;
+  }): string {
+    if (e.source === "browser") return `${e.event_name} — browser pixel fired`;
+    if (e.status === "confirmed") return `${e.event_name} — CAPI sent, Meta confirmed`;
+    if (e.status === "failed") return `${e.event_name} — CAPI failed`;
+    return `${e.event_name} — CAPI sent`;
+  }
+
   const timeline: TimelineEntry[] = [
     ...(history ?? []).map((h) => ({
       id: `h-${h.id}`,
@@ -108,7 +129,33 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
       sub: a.detail,
       created_at: a.created_at,
     })),
+    ...(trackingEvents ?? []).map((e) => ({
+      id: `t-${e.id}`,
+      text: trackingLabel(e),
+      sub: e.error,
+      created_at: e.created_at,
+    })),
+    {
+      id: "submitted",
+      text: "Lead submitted",
+      sub: null,
+      created_at: lead.created_at,
+    },
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // Estimated Meta match quality from the customer data we send with CAPI
+  const matchFields: Array<{ label: string; sent: boolean; weight: number }> = [
+    { label: "Phone (hashed)", sent: !!lead.phone, weight: 3 },
+    { label: "Name (hashed)", sent: !!lead.name, weight: 1.5 },
+    { label: "State (hashed)", sent: !!lead.state, weight: 1 },
+    { label: "City (hashed)", sent: !!lead.city, weight: 1 },
+    { label: "Email (hashed)", sent: !!lead.email, weight: 1 },
+    { label: "Browser ID (fbp)", sent: !!lead.fbp, weight: 1.5 },
+    { label: "Click ID (fbc)", sent: !!lead.fbc, weight: 1 },
+    { label: "IP & browser info", sent: !!lead.client_ip, weight: 1 },
+  ];
+  const matchScore =
+    Math.round(matchFields.reduce((s, f) => s + (f.sent ? f.weight : 0), 0) * 10) / 10;
 
   return (
     <div>
@@ -134,6 +181,11 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
         >
           {STATUS_LABELS[status] ?? status}
         </span>
+        {lead.is_test && (
+          <span className="mt-1 inline-block text-xs font-bold px-2.5 py-1 rounded-full bg-orange-100 text-orange-700">
+            🧪 TEST LEAD
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -376,6 +428,27 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
               />
             </div>
           )}
+
+          {/* Meta match quality (estimated from data sent via CAPI) */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+              Meta Match Quality
+            </p>
+            <p className="text-2xl font-bold text-gray-900">
+              {Math.min(10, matchScore).toFixed(1)}
+              <span className="text-sm text-gray-400 font-medium">/10 (estimated)</span>
+            </p>
+            <ul className="mt-3 space-y-1">
+              {matchFields.map((f) => (
+                <li key={f.label} className="flex items-center justify-between text-xs">
+                  <span className="text-gray-600">{f.label}</span>
+                  <span className={f.sent ? "text-green-600 font-semibold" : "text-gray-300"}>
+                    {f.sent ? "✓ sent" : "— not available"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
     </div>

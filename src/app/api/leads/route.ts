@@ -126,12 +126,15 @@ export async function POST(request: NextRequest) {
     client_user_agent: clientUserAgent,
     variant_id: variantId || undefined,
     selected_options: rawSelectedOptions || undefined,
+    is_test: b.is_test === true,
+    tracking_session_id:
+      typeof b.session_id === "string" ? b.session_id.slice(0, 64) : null,
   };
 
   const { data: lead, error: insertError } = await supabase
     .from("leads")
     .insert(insertPayload)
-    .select("order_number, total, name, event_id_lead")
+    .select("id, order_number, total, name, event_id_lead")
     .single();
 
   if (insertError || !lead) {
@@ -143,11 +146,17 @@ export async function POST(request: NextRequest) {
   }
 
   const result = lead as {
+    id: string;
     order_number: string;
     total: number;
     name: string;
     event_id_lead: string;
   };
+
+  const isTest = b.is_test === true;
+  const nameParts = rawName.split(/\s+/);
+  const firstName = nameParts[0] ?? null;
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : null;
 
   // Fire CAPI Lead — use service client to read secret capi_access_token
   const serviceClient = createServiceClient();
@@ -171,6 +180,10 @@ export async function POST(request: NextRequest) {
       eventTime: Math.floor(Date.now() / 1000),
       sourceUrl,
       phone: normaliseNGPhone(rawPhone),
+      firstName,
+      lastName,
+      city: rawCity,
+      state: rawState,
       clientIp,
       clientUserAgent,
       fbp: typeof b.fbp === "string" ? b.fbp : null,
@@ -178,15 +191,18 @@ export async function POST(request: NextRequest) {
       currency: "NGN",
       value: result.total,
       contentName: pixelData.name,
+      log: { productId, leadId: result.id, test: isTest },
     }).catch((err: unknown) => console.error("CAPI Lead:", err));
   }
 
-  // Push notification to admin devices (non-blocking)
-  sendPushToAll({
-    title: `New order: ${result.order_number}`,
-    body: `${result.name} — ₦${result.total.toLocaleString("en-NG")}`,
-    url: "/admin/leads",
-  }).catch((err: unknown) => console.error("Push notification:", err));
+  // Push notification to admin devices (non-blocking); skip test orders
+  if (!isTest) {
+    sendPushToAll({
+      title: `New order: ${result.order_number}`,
+      body: `${result.name} — ₦${result.total.toLocaleString("en-NG")}`,
+      url: "/admin/leads",
+    }).catch((err: unknown) => console.error("Push notification:", err));
+  }
 
   return NextResponse.json(result, { status: 201 });
 }

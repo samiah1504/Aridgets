@@ -10,6 +10,7 @@ const NAV: Array<{ href: string; label: string; perms: string[] | null }> = [
   { href: "/admin", label: "Dashboard", perms: null },
   { href: "/admin/products", label: "Products", perms: ["products.view"] },
   { href: "/admin/leads", label: "Leads", perms: ["leads.view_all", "leads.view_assigned"] },
+  { href: "/admin/tracking", label: "Pixel & CAPI", perms: ["tracking.view", "tracking.edit"] },
   { href: "/admin/staff", label: "Staff", perms: ["staff.view"] },
   { href: "/admin/roles", label: "Roles", perms: ["roles.manage"] },
   { href: "/admin/audit", label: "Audit Log", perms: ["audit.view"] },

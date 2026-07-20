@@ -309,6 +309,8 @@ export type Database = {
           buyer_confirmed: boolean;
           follow_up_at: string | null;
           last_contacted_at: string | null;
+          is_test: boolean;
+          tracking_session_id: string | null;
         };
         Insert: {
           id?: string;
@@ -340,6 +342,8 @@ export type Database = {
           variant_id?: string | null;
           selected_options?: Record<string, string> | null;
           buyer_confirmed?: boolean;
+          is_test?: boolean;
+          tracking_session_id?: string | null;
         };
         Update: {
           status?: LeadStatus;
@@ -541,6 +545,52 @@ export type Database = {
           is_primary?: boolean;
         };
         Relationships: [];
+      };
+
+      tracking_events: {
+        Row: {
+          id: string;
+          product_id: string;
+          lead_id: string | null;
+          session_id: string | null;
+          event_name: "PageView" | "ViewContent" | "Lead" | "Contact" | "Purchase";
+          event_id: string | null;
+          source: "browser" | "server";
+          status: "sent" | "confirmed" | "failed";
+          error: string | null;
+          test: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          lead_id?: string | null;
+          session_id?: string | null;
+          event_name: "PageView" | "ViewContent" | "Lead" | "Contact" | "Purchase";
+          event_id?: string | null;
+          source: "browser" | "server";
+          status?: "sent" | "confirmed" | "failed";
+          error?: string | null;
+          test?: boolean;
+          created_at?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [
+          {
+            foreignKeyName: "tracking_events_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "tracking_events_lead_id_fkey";
+            columns: ["lead_id"];
+            isOneToOne: false;
+            referencedRelation: "leads";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       lead_activities: {

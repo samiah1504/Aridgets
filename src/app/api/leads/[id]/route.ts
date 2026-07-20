@@ -71,7 +71,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
   const { data: lead, error: fetchErr } = await supabase
     .from("leads")
     .select(
-      "id, status, product_id, event_id_purchase, confirmed_at, dropped_at, phone, client_ip, client_user_agent, fbp, fbc, total"
+      "id, status, product_id, event_id_purchase, confirmed_at, dropped_at, phone, email, name, city, state, is_test, client_ip, client_user_agent, fbp, fbc, total"
     )
     .eq("id", id)
     .single();
@@ -139,6 +139,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
 
     if (product?.pixel_id && product?.capi_access_token) {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aridgets.vercel.app";
+      const nameParts = (lead.name ?? "").split(/\s+/);
       sendCAPIEvent({
         pixelId: product.pixel_id,
         accessToken: product.capi_access_token,
@@ -148,6 +149,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
         eventTime: Math.floor(Date.now() / 1000),
         sourceUrl: `${siteUrl}/p/${product.slug}`,
         phone: lead.phone,
+        email: lead.email,
+        firstName: nameParts[0] ?? null,
+        lastName: nameParts.length > 1 ? nameParts[nameParts.length - 1] : null,
+        city: lead.city,
+        state: lead.state,
         clientIp: lead.client_ip,
         clientUserAgent: lead.client_user_agent,
         fbp: lead.fbp,
@@ -155,6 +161,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
         currency: "NGN",
         value: lead.total,
         contentName: product.name,
+        log: { productId: lead.product_id, leadId: lead.id, test: lead.is_test },
       }).catch((err) => console.error("CAPI Purchase:", err));
     }
   }
