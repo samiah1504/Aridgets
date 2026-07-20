@@ -5,6 +5,9 @@
 
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "Aridgets";
 
+// Canonical site origin — used for SEO metadata, sitemap, and CAPI source URLs.
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://aridgets.com").replace(/\/$/, "");
+
 // Serious Buyers notice defaults — per-product overrides live in
 // products.content.seriousBuyer (editable in the product editor).
 export const SERIOUS_BUYER_DEFAULTS = {

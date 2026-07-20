@@ -4,7 +4,6 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasPerm } from "@/lib/permissions";
 import { SERIOUS_BUYER_DEFAULTS } from "@/lib/config";
-import { NIGERIAN_STATES } from "@/lib/constants/states";
 import type { Database } from "@/types/database";
 import type { ProductContent, ProductTheme, SectionConfig, TemplateType } from "@/types";
 import VariationsEditor from "./VariationsEditor";
@@ -287,7 +286,7 @@ export default function ProductForm({ product: initial, permissions }: Props) {
 
     Design: (
       <div className="space-y-5">
-        <p className="text-sm text-gray-500">Choose the visual template for this product's sales page.</p>
+        <p className="text-sm text-gray-500">Choose the visual template for this product&apos;s sales page.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {TEMPLATE_TYPES.map((t) => (
             <label

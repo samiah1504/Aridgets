@@ -41,6 +41,7 @@ export default function MediaManager({ productId }: Props) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [productId]);
 
   async function load() {

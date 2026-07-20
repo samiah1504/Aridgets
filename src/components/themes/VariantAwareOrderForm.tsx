@@ -101,9 +101,16 @@ export default function VariantAwareOrderForm({
   const [testMode, setTestMode] = useState(false);
 
   useEffect(() => {
-    setFbp(getCookie("_fbp"));
-    setFbc(getCookie("_fbc"));
-    setTestMode(getTrackingSession().test);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setFbp(getCookie("_fbp"));
+      setFbc(getCookie("_fbc"));
+      setTestMode(getTrackingSession().test);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const activeOptions = options.filter((o) => o.values.some((v) => v.active));
@@ -202,8 +209,8 @@ export default function VariantAwareOrderForm({
       const result = data as SuccessData;
       setSuccess(result);
 
-      if (pixelId && typeof window !== "undefined" && "fbq" in window) {
-        (window as Window & { fbq: Function }).fbq(
+      if (pixelId && typeof window !== "undefined" && typeof window.fbq === "function") {
+        window.fbq(
           "track", "Lead",
           { value: result.total, currency: "NGN" },
           { eventID: result.event_id_lead }

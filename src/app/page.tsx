@@ -8,7 +8,8 @@ import type { ProductContent } from "@/types";
 
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: "Browse our products and place your order today.",
+  description: "Browse our products and place your order today. Pay on delivery, nationwide across Nigeria.",
+  alternates: { canonical: "/" },
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;

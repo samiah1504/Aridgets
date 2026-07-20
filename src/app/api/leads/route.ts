@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { isValidNGPhone, normaliseNGPhone } from "@/lib/utils/phone";
+import { NIGERIAN_STATES } from "@/lib/constants/states";
 import { sendCAPIEvent } from "@/lib/capi";
 import { sendPushToAll } from "@/lib/push";
 import type { Database } from "@/types/database";
@@ -23,12 +24,12 @@ export async function POST(request: NextRequest) {
   const b = body as Record<string, unknown>;
 
   const productId = typeof b.product_id === "string" ? b.product_id : "";
-  const rawName = typeof b.name === "string" ? b.name.trim() : "";
+  const rawName = typeof b.name === "string" ? b.name.trim().slice(0, 120) : "";
   const rawPhone = typeof b.phone === "string" ? b.phone.trim() : "";
   const rawState = typeof b.state === "string" ? b.state.trim() : "";
-  const rawAddress = typeof b.address === "string" ? b.address.trim() : "";
-  const rawCity = typeof b.city === "string" ? b.city.trim() : null;
-  const quantity = Math.max(1, Math.round(Number(b.quantity ?? 1)));
+  const rawAddress = typeof b.address === "string" ? b.address.trim().slice(0, 500) : "";
+  const rawCity = typeof b.city === "string" ? b.city.trim().slice(0, 80) : null;
+  const quantity = Math.min(20, Math.max(1, Math.round(Number(b.quantity ?? 1)) || 1));
 
   if (!productId) return NextResponse.json({ error: "product_id is required" }, { status: 400 });
   if (!rawName) return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -36,7 +37,9 @@ export async function POST(request: NextRequest) {
   if (!isValidNGPhone(rawPhone)) {
     return NextResponse.json({ error: "Enter a valid Nigerian phone number" }, { status: 400 });
   }
-  if (!rawState) return NextResponse.json({ error: "State is required" }, { status: 400 });
+  if (!NIGERIAN_STATES.includes(rawState as (typeof NIGERIAN_STATES)[number])) {
+    return NextResponse.json({ error: "Please select a valid state" }, { status: 400 });
+  }
   if (!rawAddress) return NextResponse.json({ error: "Delivery address is required" }, { status: 400 });
 
   const variantId = typeof b.variant_id === "string" && b.variant_id ? b.variant_id : null;

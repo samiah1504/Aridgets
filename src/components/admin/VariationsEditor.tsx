@@ -22,6 +22,7 @@ export default function VariationsEditor({ productId }: Props) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [productId]);
 
   async function load() {
@@ -352,7 +353,7 @@ export default function VariationsEditor({ productId }: Props) {
 
           {variants.length === 0 ? (
             <p className="text-sm text-gray-400">
-              No variants yet. Click "Generate combinations" to create all option combinations.
+              No variants yet. Click &ldquo;Generate combinations&rdquo; to create all option combinations.
             </p>
           ) : (
             <div className="space-y-3">

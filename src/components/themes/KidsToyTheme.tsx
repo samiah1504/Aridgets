@@ -200,7 +200,7 @@ export default function KidsToyTheme({
       {enabled.has("featuresSpecs") && content.featuresSpecs && content.featuresSpecs.length > 0 && (
         <section className="max-w-3xl mx-auto px-4 py-10">
           <h2 className="text-2xl font-extrabold text-center mb-6" style={{ color: "var(--product-primary)" }}>
-            What's Included 🎁
+            What&apos;s Included 🎁
           </h2>
           <ul className="space-y-3">
             {content.featuresSpecs.map((item, i) => (

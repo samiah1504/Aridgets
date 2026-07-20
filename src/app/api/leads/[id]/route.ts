@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getStaff } from "@/lib/auth";
 import { hasPerm } from "@/lib/permissions";
+import { SITE_URL } from "@/lib/config";
 import { sendCAPIEvent } from "@/lib/capi";
 import type { LeadStatus } from "@/types";
 import type { Database } from "@/types/database";
@@ -138,7 +139,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
       .single();
 
     if (product?.pixel_id && product?.capi_access_token) {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aridgets.vercel.app";
       const nameParts = (lead.name ?? "").split(/\s+/);
       sendCAPIEvent({
         pixelId: product.pixel_id,
@@ -147,7 +147,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
         eventName: "Purchase",
         eventId: eventIdPurchase,
         eventTime: Math.floor(Date.now() / 1000),
-        sourceUrl: `${siteUrl}/p/${product.slug}`,
+        sourceUrl: `${SITE_URL}/p/${product.slug}`,
         phone: lead.phone,
         email: lead.email,
         firstName: nameParts[0] ?? null,

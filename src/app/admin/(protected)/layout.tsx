@@ -7,6 +7,7 @@ import PushSubscribe from "@/components/admin/PushSubscribe";
 
 export const metadata: Metadata = {
   title: { default: "Admin", template: `%s | ${APP_NAME} Admin` },
+  robots: { index: false, follow: false },
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: APP_NAME },
   other: { "mobile-web-app-capable": "yes" },

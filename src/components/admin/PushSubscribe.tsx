@@ -10,19 +10,28 @@ export default function PushSubscribe() {
   const [working, setWorking] = useState(false);
 
   useEffect(() => {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setState("unsupported");
-      return;
+    let cancelled = false;
+    async function detect() {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+        if (!cancelled) setState("unsupported");
+        return;
+      }
+      if (Notification.permission === "denied") {
+        if (!cancelled) setState("denied");
+        return;
+      }
+      try {
+        const reg = await navigator.serviceWorker.register("/sw.js");
+        const sub = await reg.pushManager.getSubscription();
+        if (!cancelled) setState(sub ? "subscribed" : "unsubscribed");
+      } catch {
+        if (!cancelled) setState("unsubscribed");
+      }
     }
-    if (Notification.permission === "denied") {
-      setState("denied");
-      return;
-    }
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then((reg) => reg.pushManager.getSubscription())
-      .then((sub) => setState(sub ? "subscribed" : "unsubscribed"))
-      .catch(() => setState("unsubscribed"));
+    queueMicrotask(detect);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function subscribe() {

@@ -105,6 +105,8 @@ export default async function TrackingPage() {
 
   const today = (todayEvents ?? []) as EventRow[];
   const recent = (recentEvents ?? []) as EventRow[];
+  // Server component: reading the clock during render is intentional here
+  // eslint-disable-next-line react-hooks/purity
   const hourAgo = Date.now() - 3600_000;
 
   return (

@@ -137,7 +137,7 @@ export default function FurnitureTheme({
       {enabled.has("problem") && content.problemText && (
         <section className="max-w-3xl mx-auto px-4 py-10 text-center">
           <p className="text-lg text-gray-600 leading-relaxed italic">
-            "{content.problemText}"
+            &ldquo;{content.problemText}&rdquo;
           </p>
         </section>
       )}

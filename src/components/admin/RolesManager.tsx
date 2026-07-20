@@ -18,6 +18,47 @@ function slugify(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
 
+function PermissionMatrix({
+  selected,
+  onToggle,
+  disabled,
+}: {
+  selected: string[];
+  onToggle: (key: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {PERMISSION_GROUPS.map((group) => (
+        <div key={group.name} className="border border-gray-100 rounded-xl p-3">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            {group.name}
+          </p>
+          <div className="space-y-1">
+            {group.permissions.map((perm) => (
+              <label
+                key={perm.key}
+                className={`flex items-center gap-2 text-sm px-2 py-1 rounded-lg ${
+                  disabled ? "opacity-60" : "hover:bg-gray-50 cursor-pointer"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  disabled={disabled}
+                  checked={selected.includes("*") || selected.includes(perm.key)}
+                  onChange={() => onToggle(perm.key)}
+                  className="accent-indigo-600"
+                />
+                <span className="text-gray-700">{perm.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function RolesManager({ roles }: { roles: RoleRow[] }) {
   const router = useRouter();
   const [error, setError] = useState("");
@@ -69,47 +110,6 @@ export default function RolesManager({ roles }: { roles: RoleRow[] }) {
     const { error: err } = await supabase.from("roles").delete().eq("id", role.id);
     if (err) { setError(err.message); return; }
     router.refresh();
-  }
-
-  function PermissionMatrix({
-    selected,
-    onToggle,
-    disabled,
-  }: {
-    selected: string[];
-    onToggle: (key: string) => void;
-    disabled?: boolean;
-  }) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {PERMISSION_GROUPS.map((group) => (
-          <div key={group.name} className="border border-gray-100 rounded-xl p-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              {group.name}
-            </p>
-            <div className="space-y-1">
-              {group.permissions.map((perm) => (
-                <label
-                  key={perm.key}
-                  className={`flex items-center gap-2 text-sm px-2 py-1 rounded-lg ${
-                    disabled ? "opacity-60" : "hover:bg-gray-50 cursor-pointer"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    disabled={disabled}
-                    checked={selected.includes("*") || selected.includes(perm.key)}
-                    onChange={() => onToggle(perm.key)}
-                    className="accent-indigo-600"
-                  />
-                  <span className="text-gray-700">{perm.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
   }
 
   return (

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { SITE_URL } from "@/lib/config";
 import type { ProductContent, ProductTheme, SectionConfig, ProductOption, ProductVariant, TemplateType, OptionDisplayType } from "@/types";
 import MetaPixel from "@/components/MetaPixel";
 import GadgetTheme from "@/components/themes/GadgetTheme";
@@ -88,12 +89,36 @@ async function getVariants(productId: string): Promise<ProductVariant[]> {
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProduct(slug);
-  if (!product) return { title: "Product Not Found" };
+  if (!product) return { title: "Product Not Found", robots: { index: false } };
+
   const content = product.content as ProductContent;
+  const media = await getMedia(product.id);
+  const images = media.filter((m) => m.kind === "image");
+  const heroImage = images.find((m) => m.slot === "hero")?.url ?? images[0]?.url;
+
+  const description =
+    content.subhead ??
+    content.headline ??
+    `Order ${product.name} — pay on delivery, nationwide across Nigeria.`;
+  const url = `${SITE_URL}/p/${product.slug}`;
+
   return {
     title: product.name,
-    description: content.subhead ?? "",
-    robots: { index: false, follow: false },
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: product.name,
+      description,
+      url,
+      type: "website",
+      ...(heroImage && { images: [{ url: heroImage, alt: product.name }] }),
+    },
+    twitter: {
+      card: heroImage ? "summary_large_image" : "summary",
+      title: product.name,
+      description,
+      ...(heroImage && { images: [heroImage] }),
+    },
   };
 }
 
