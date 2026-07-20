@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { APP_NAME } from "@/lib/config";
 import ForgotPasswordForm from "@/components/admin/ForgotPasswordForm";
 
-export const metadata: Metadata = { title: "Forgot Password | Crift Admin" };
+export const metadata: Metadata = { title: `Forgot Password | ${APP_NAME} Admin` };
 
 export default function ForgotPasswordPage() {
   return (

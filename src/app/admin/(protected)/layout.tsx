@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getStaff } from "@/lib/auth";
+import { APP_NAME } from "@/lib/config";
 import AdminNav from "@/components/admin/AdminNav";
 import PushSubscribe from "@/components/admin/PushSubscribe";
 
 export const metadata: Metadata = {
-  title: { default: "Admin", template: "%s | Crift Admin" },
+  title: { default: "Admin", template: `%s | ${APP_NAME} Admin` },
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Crift" },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: APP_NAME },
   other: { "mobile-web-app-capable": "yes" },
 };
 

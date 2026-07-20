@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { APP_NAME } from "@/lib/config";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: process.env.NEXT_PUBLIC_APP_NAME ?? "Crift Shop",
-    template: `%s | ${process.env.NEXT_PUBLIC_APP_NAME ?? "Crift Shop"}`,
+    default: APP_NAME,
+    template: `%s | ${APP_NAME}`,
   },
   description: "High-converting COD sales pages for Nigeria.",
   robots: { index: false, follow: false },

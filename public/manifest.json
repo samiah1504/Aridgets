@@ -1,7 +1,7 @@
 {
-  "name": "Crift Shop Admin",
-  "short_name": "Crift",
-  "description": "Manage your Crift Shop products and leads",
+  "name": "Aridgets Admin",
+  "short_name": "Aridgets",
+  "description": "Manage your Aridgets products and leads",
   "start_url": "/admin",
   "scope": "/admin",
   "display": "standalone",

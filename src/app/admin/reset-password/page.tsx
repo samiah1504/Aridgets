@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { APP_NAME } from "@/lib/config";
 import ResetPasswordForm from "@/components/admin/ResetPasswordForm";
 
-export const metadata: Metadata = { title: "Set New Password | Crift Admin" };
+export const metadata: Metadata = { title: `Set New Password | ${APP_NAME} Admin` };
 
 export default function ResetPasswordPage() {
   return (

@@ -1,3 +1,4 @@
+import { APP_NAME } from "@/lib/config";
 import SocialProof from "@/components/sections/SocialProof";
 import FAQ from "@/components/sections/FAQ";
 import Guarantee from "@/components/sections/Guarantee";
@@ -251,11 +252,10 @@ export default function FurnitureTheme({
         />
       )}
 
-      {content.footerText && (
-        <footer className="text-center py-8 text-xs opacity-40 px-4">
-          {content.footerText}
-        </footer>
-      )}
+      <footer className="text-center py-8 text-xs opacity-40 px-4 space-y-1">
+        {content.footerText && <p>{content.footerText}</p>}
+        <p>Powered by {APP_NAME}</p>
+      </footer>
     </>
   );
 }

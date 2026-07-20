@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Crift Shop product-level theme variables — set inline by the landing page template */
+/* Aridgets product-level theme variables — set inline by the landing page template */
 :root {
   --product-primary: #e63946;
   --product-accent: #f1a208;

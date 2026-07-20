@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { APP_NAME } from "@/lib/config";
 import { hasAnyPerm } from "@/lib/permissions";
 
 const NAV: Array<{ href: string; label: string; perms: string[] | null }> = [
@@ -44,7 +45,7 @@ export default function AdminNav({
     <header className="bg-gray-900 text-white">
       <div className="max-w-7xl mx-auto px-4 flex items-center gap-4 h-14">
         <span className="font-extrabold text-sm tracking-tight shrink-0">
-          Crift Shop
+          {APP_NAME}
         </span>
         <nav className="flex items-center gap-1 flex-1 overflow-x-auto">
           {visible.map((item) => (

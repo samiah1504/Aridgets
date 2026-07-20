@@ -2,11 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { APP_NAME } from "@/lib/config";
 import { formatNGN } from "@/lib/utils/currency";
 import type { ProductContent } from "@/types";
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME ?? "Crift Shop",
+  title: APP_NAME,
   description: "Browse our products and place your order today.",
 };
 
@@ -31,7 +32,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     .eq("show_on_homepage", true)
     .order("created_at", { ascending: false });
 
-  const storeName = process.env.NEXT_PUBLIC_APP_NAME ?? "Crift Shop";
+  const storeName = APP_NAME;
 
   return (
     <div className="min-h-screen bg-gray-50">
