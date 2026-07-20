@@ -39,14 +39,24 @@ set email = u.email
 from auth.users u
 where u.id = p.id and p.email is null;
 
-update public.profiles p
-set role_id = r.id
-from public.roles r
-where p.role_id is null
-  and r.key = case
-    when p.role in ('owner', 'admin') then 'super_admin'
-    else 'customer_support'
-  end;
+-- Map legacy text roles onto the new roles (skipped when the column is
+-- already gone, so the script is safe to re-run)
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles' and column_name = 'role'
+  ) then
+    update public.profiles p
+    set role_id = r.id
+    from public.roles r
+    where p.role_id is null
+      and r.key = case
+        when p.role in ('owner', 'admin') then 'super_admin'
+        else 'customer_support'
+      end;
+  end if;
+end $$;
 
 alter table public.profiles drop column if exists role;
 
