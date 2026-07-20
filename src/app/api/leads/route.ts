@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
   // Fetch product price (anon can read live products via RLS)
   const { data: rawProduct, error: productError } = await supabase
     .from("products")
-    .select("id, price, status")
+    .select("id, price, status, content")
     .eq("id", productId)
     .single();
 
@@ -60,9 +60,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Product not found" }, { status: 404 });
   }
 
-  const product = rawProduct as { id: string; price: number; status: string };
+  const product = rawProduct as {
+    id: string;
+    price: number;
+    status: string;
+    content: { seriousBuyer?: { enabled?: boolean; required?: boolean } } | null;
+  };
   if (product.status !== "live") {
     return NextResponse.json({ error: "Product not available" }, { status: 404 });
+  }
+
+  // Serious Buyers notice: enforce confirmation server-side when required
+  const notice = product.content?.seriousBuyer;
+  const buyerConfirmed = b.buyer_confirmed === true;
+  if (notice?.enabled !== false && notice?.required !== false && !buyerConfirmed) {
+    return NextResponse.json(
+      { error: "Please confirm that you are ready to receive and pay on delivery" },
+      { status: 400 }
+    );
   }
 
   let unitPrice = product.price;
@@ -96,6 +111,7 @@ export async function POST(request: NextRequest) {
     state: rawState,
     city: rawCity || null,
     address: rawAddress,
+    buyer_confirmed: buyerConfirmed,
     quantity,
     unit_price: unitPrice,
     total,

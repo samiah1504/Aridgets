@@ -77,6 +77,7 @@ export default function GadgetTheme({
         options={options}
         variants={variants}
         primaryColor={theme.primary}
+        notice={content.seriousBuyer}
         title={content.orderFormTitle}
         successHeadline={content.orderSuccessHeadline}
         successBody={content.orderSuccessBody}

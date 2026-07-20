@@ -1,3 +1,11 @@
+export interface SeriousBuyerNotice {
+  enabled?: boolean; // default true
+  heading?: string;
+  message?: string;
+  checkboxText?: string;
+  required?: boolean; // default true
+}
+
 export interface Role {
   id: string;
   key: string;
@@ -70,6 +78,7 @@ export interface ProductContent {
   guaranteeText?: string;
   faq?: Array<{ question: string; answer: string }>;
   footerText?: string;
+  seriousBuyer?: SeriousBuyerNotice;
   orderFormTitle?: string;
   orderSuccessHeadline?: string;
   orderSuccessBody?: string;

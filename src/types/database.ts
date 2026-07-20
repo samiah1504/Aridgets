@@ -306,6 +306,9 @@ export type Database = {
           dropped_at: string | null;
           variant_id: string | null;
           selected_options: Record<string, string> | null;
+          buyer_confirmed: boolean;
+          follow_up_at: string | null;
+          last_contacted_at: string | null;
         };
         Insert: {
           id?: string;
@@ -336,6 +339,7 @@ export type Database = {
           utm_content?: string | null;
           variant_id?: string | null;
           selected_options?: Record<string, string> | null;
+          buyer_confirmed?: boolean;
         };
         Update: {
           status?: LeadStatus;
@@ -344,6 +348,8 @@ export type Database = {
           event_id_purchase?: string | null;
           confirmed_at?: string | null;
           dropped_at?: string | null;
+          follow_up_at?: string | null;
+          last_contacted_at?: string | null;
         };
         Relationships: [
           {
@@ -535,6 +541,44 @@ export type Database = {
           is_primary?: boolean;
         };
         Relationships: [];
+      };
+
+      lead_activities: {
+        Row: {
+          id: string;
+          lead_id: string;
+          user_id: string | null;
+          actor_name: string | null;
+          kind: "call_opened" | "whatsapp_opened" | "contacted" | "note";
+          detail: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          lead_id: string;
+          user_id?: string | null;
+          actor_name?: string | null;
+          kind: "call_opened" | "whatsapp_opened" | "contacted" | "note";
+          detail?: string | null;
+          created_at?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey";
+            columns: ["lead_id"];
+            isOneToOne: false;
+            referencedRelation: "leads";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "lead_activities_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       lead_status_history: {

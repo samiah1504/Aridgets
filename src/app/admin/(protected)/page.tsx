@@ -273,22 +273,26 @@ async function MyWorkDashboard({
   // RLS scopes both queries to what this member may see
   const [{ data: myLeads }, { data: myProducts }] = await Promise.all([
     canSeeLeads
-      ? supabase.from("leads").select("id, status, created_at")
+      ? supabase.from("leads").select("id, status, created_at, follow_up_at")
       : Promise.resolve({ data: null }),
     canSeeProducts
       ? supabase.from("products").select("id, status")
       : Promise.resolve({ data: null }),
   ]);
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
 
   const leadCounts = (myLeads ?? []).reduce<Record<string, number>>((acc, l) => {
     acc[l.status] = (acc[l.status] ?? 0) + 1;
     return acc;
   }, {});
+  // Scheduled follow-ups due today (or overdue) on leads still in play
   const todaysFollowUps = (myLeads ?? []).filter(
-    (l) => l.status === "new" || (l.status === "not_picking_calls" && new Date(l.created_at) >= todayStart)
+    (l) =>
+      l.follow_up_at &&
+      new Date(l.follow_up_at) <= todayEnd &&
+      (l.status === "new" || l.status === "not_picking_calls")
   ).length;
 
   const productCounts = (myProducts ?? []).reduce<Record<string, number>>((acc, p) => {

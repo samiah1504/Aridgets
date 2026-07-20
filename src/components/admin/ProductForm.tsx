@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { hasPerm } from "@/lib/permissions";
+import { SERIOUS_BUYER_DEFAULTS } from "@/lib/config";
 import { NIGERIAN_STATES } from "@/lib/constants/states";
 import type { Database } from "@/types/database";
 import type { ProductContent, ProductTheme, SectionConfig, TemplateType } from "@/types";
@@ -623,6 +624,58 @@ export default function ProductForm({ product: initial, permissions }: Props) {
             <Field label="Footer text">
               <FormInput value={content.footerText ?? ""} onChange={(v) => setContent({ footerText: v })} />
             </Field>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Serious Buyer Notice</h3>
+          <div className="space-y-4">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={content.seriousBuyer?.enabled !== false}
+                onChange={(e) =>
+                  setContent({ seriousBuyer: { ...content.seriousBuyer, enabled: e.target.checked } })
+                }
+                className="w-4 h-4 accent-indigo-600"
+              />
+              <span className="text-sm text-gray-700 font-medium">Show notice above the order form</span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={content.seriousBuyer?.required !== false}
+                onChange={(e) =>
+                  setContent({ seriousBuyer: { ...content.seriousBuyer, required: e.target.checked } })
+                }
+                className="w-4 h-4 accent-indigo-600"
+              />
+              <span className="text-sm text-gray-700 font-medium">Customer must tick the checkbox before ordering</span>
+            </label>
+            <Field label="Heading">
+              <FormInput
+                value={content.seriousBuyer?.heading ?? ""}
+                onChange={(v) => setContent({ seriousBuyer: { ...content.seriousBuyer, heading: v } })}
+                placeholder={SERIOUS_BUYER_DEFAULTS.heading}
+              />
+            </Field>
+            <Field label="Message">
+              <FormTextarea
+                value={content.seriousBuyer?.message ?? ""}
+                onChange={(v) => setContent({ seriousBuyer: { ...content.seriousBuyer, message: v } })}
+                placeholder={SERIOUS_BUYER_DEFAULTS.message}
+              />
+            </Field>
+            <Field label="Checkbox wording">
+              <FormInput
+                value={content.seriousBuyer?.checkboxText ?? ""}
+                onChange={(v) => setContent({ seriousBuyer: { ...content.seriousBuyer, checkboxText: v } })}
+                placeholder={SERIOUS_BUYER_DEFAULTS.checkboxText}
+              />
+            </Field>
+            <p className="text-xs text-gray-400">
+              Leave a field empty to use the default wording shown as placeholder.
+            </p>
           </div>
         </section>
       </div>

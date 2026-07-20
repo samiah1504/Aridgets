@@ -13,6 +13,14 @@ export function normaliseNGPhone(raw: string): string {
   return `+234${match[1]}`;
 }
 
+// Best-effort conversion of a stored number to +234 international format.
+// Returns null instead of throwing when the number is not a valid NG phone.
+export function toIntlNGPhone(raw: string): string | null {
+  const digits = raw.replace(/[\s-]+/g, "");
+  const match = digits.match(NG_REGEX);
+  return match ? `+234${match[1]}` : null;
+}
+
 // SHA-256 hash of normalised phone — used for Meta CAPI matching.
 export async function hashPhone(raw: string): Promise<string> {
   const normalised = normaliseNGPhone(raw);

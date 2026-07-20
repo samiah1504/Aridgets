@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { NIGERIAN_STATES } from "@/lib/constants/states";
+import { SERIOUS_BUYER_DEFAULTS } from "@/lib/config";
 import { formatNGN } from "@/lib/utils/currency";
 import { isValidNGPhone } from "@/lib/utils/phone";
-import type { ProductOption, ProductVariant } from "@/types";
+import type { ProductOption, ProductVariant, SeriousBuyerNotice } from "@/types";
 
 export interface VariantAwareOrderFormProps {
   productId: string;
@@ -24,6 +25,7 @@ export interface VariantAwareOrderFormProps {
   options: ProductOption[];
   variants: ProductVariant[];
   primaryColor: string;
+  notice?: SeriousBuyerNotice;
 }
 
 interface SuccessData {
@@ -77,7 +79,10 @@ export default function VariantAwareOrderForm({
   options,
   variants,
   primaryColor,
+  notice,
 }: VariantAwareOrderFormProps) {
+  const noticeEnabled = notice?.enabled !== false;
+  const noticeRequired = noticeEnabled && notice?.required !== false;
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -85,6 +90,7 @@ export default function VariantAwareOrderForm({
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [buyerConfirmed, setBuyerConfirmed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<SuccessData | null>(null);
@@ -131,8 +137,11 @@ export default function VariantAwareOrderForm({
     else if (!isValidNGPhone(phone)) e.phone = "Enter a valid Nigerian phone number";
     if (!state) e.state = "Please select your state";
     if (!address.trim()) e.address = "Delivery address is required";
+    if (noticeRequired && !buyerConfirmed) {
+      e.buyerConfirmed = "Please tick the confirmation box to place your order";
+    }
     return e;
-  }, [activeOptions, selectedValues, name, phone, state, address]);
+  }, [activeOptions, selectedValues, name, phone, state, address, noticeRequired, buyerConfirmed]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -170,6 +179,7 @@ export default function VariantAwareOrderForm({
           utm_content: utmContent,
           variant_id: matchedVariant?.id ?? undefined,
           selected_options: Object.keys(selectedOptions).length ? selectedOptions : undefined,
+          buyer_confirmed: noticeEnabled ? buyerConfirmed : undefined,
         }),
       });
 
@@ -229,6 +239,40 @@ export default function VariantAwareOrderForm({
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="px-6 py-6 space-y-5">
+          {/* Serious Buyers notice */}
+          {noticeEnabled && (
+            <div
+              className={`rounded-xl border px-4 py-4 ${
+                errors.buyerConfirmed
+                  ? "border-red-300 bg-red-50"
+                  : "border-amber-200 bg-amber-50"
+              }`}
+            >
+              <p className="text-sm font-bold text-amber-900 flex items-center gap-2">
+                <span aria-hidden>⚠️</span>
+                {notice?.heading || SERIOUS_BUYER_DEFAULTS.heading}
+              </p>
+              <p className="text-xs text-amber-800 leading-relaxed mt-1.5">
+                {notice?.message || SERIOUS_BUYER_DEFAULTS.message}
+              </p>
+              <label className="flex items-start gap-2.5 mt-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={buyerConfirmed}
+                  onChange={(e) => setBuyerConfirmed(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-amber-600 shrink-0"
+                />
+                <span className="text-xs font-medium text-amber-900 leading-snug">
+                  {notice?.checkboxText || SERIOUS_BUYER_DEFAULTS.checkboxText}
+                  {noticeRequired && <span className="text-red-500 ml-1">*</span>}
+                </span>
+              </label>
+              {errors.buyerConfirmed && (
+                <p className="text-xs text-red-600 mt-2">{errors.buyerConfirmed}</p>
+              )}
+            </div>
+          )}
+
           {/* Standard form fields */}
           <div>
             <label className="block text-sm font-semibold mb-1" htmlFor="of-name">

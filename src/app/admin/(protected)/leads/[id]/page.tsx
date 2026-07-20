@@ -6,6 +6,8 @@ import { requirePerm, hasPerm } from "@/lib/auth";
 import { formatNGN } from "@/lib/utils/currency";
 import LeadActions from "@/components/admin/LeadActions";
 import AssignLead from "@/components/admin/AssignLead";
+import ContactButtons from "@/components/admin/ContactButtons";
+import FollowUpPanel from "@/components/admin/FollowUpPanel";
 import type { LeadStatus } from "@/types";
 
 type Params = Promise<{ id: string }>;
@@ -44,17 +46,24 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
 
   const { data: lead } = await supabase
     .from("leads")
-    .select("*, products(name, slug)")
+    .select("*, products(name, slug, product_media(url, slot, kind, sort_order))")
     .eq("id", id)
     .single();
 
   if (!lead) notFound();
 
-  const { data: history } = await supabase
-    .from("lead_status_history")
-    .select("id, from_status, to_status, note, created_at")
-    .eq("lead_id", id)
-    .order("created_at", { ascending: false });
+  const [{ data: history }, { data: activities }] = await Promise.all([
+    supabase
+      .from("lead_status_history")
+      .select("id, from_status, to_status, note, created_at")
+      .eq("lead_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("lead_activities")
+      .select("id, actor_name, kind, detail, created_at")
+      .eq("lead_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   // Staff list for the assignment control (only when the viewer can assign)
   const { data: assignableStaff } = canAssign
@@ -65,8 +74,41 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
         .order("full_name")
     : { data: null };
 
-  const product = lead.products as { name: string; slug: string } | null;
+  const product = lead.products as {
+    name: string;
+    slug: string;
+    product_media: Array<{ url: string; slot: string; kind: string; sort_order: number }> | null;
+  } | null;
   const status = lead.status as LeadStatus;
+
+  const productImages = (product?.product_media ?? [])
+    .filter((m) => m.kind === "image")
+    .sort((a, b) => a.sort_order - b.sort_order);
+  const productImage =
+    productImages.find((m) => m.slot === "hero")?.url ?? productImages[0]?.url ?? null;
+
+  // Merge status changes and contact activities into one timeline
+  type TimelineEntry = { id: string; text: string; sub: string | null; created_at: string };
+  const ACTIVITY_LABELS: Record<string, string> = {
+    call_opened: "opened the call action for this customer",
+    whatsapp_opened: "opened WhatsApp for this customer",
+    contacted: "marked the customer as contacted",
+    note: "added a note",
+  };
+  const timeline: TimelineEntry[] = [
+    ...(history ?? []).map((h) => ({
+      id: `h-${h.id}`,
+      text: `Status changed: ${h.from_status ?? "—"} → ${h.to_status}`,
+      sub: h.note,
+      created_at: h.created_at,
+    })),
+    ...(activities ?? []).map((a) => ({
+      id: `a-${a.id}`,
+      text: `${a.actor_name ?? "A staff member"} ${ACTIVITY_LABELS[a.kind] ?? a.kind}`,
+      sub: a.detail,
+      created_at: a.created_at,
+    })),
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
     <div>
@@ -102,6 +144,18 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
               Customer
             </h2>
+            {canViewContact && (
+              <div className="mb-4">
+                <ContactButtons
+                  leadId={lead.id}
+                  phone={lead.phone}
+                  customerName={lead.name}
+                  productName={product?.name ?? "your order"}
+                  total={lead.total}
+                  actorName={staff.fullName}
+                />
+              </div>
+            )}
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
               {canViewContact && (
                 <div>
@@ -150,22 +204,27 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
               Order
             </h2>
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              <div>
-                <dt className="text-gray-400">Product</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">
-                  {product ? (
-                    <a
-                      href={`/p/${product.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-indigo-600 transition"
-                    >
-                      {product.name} ↗
-                    </a>
-                  ) : "—"}
-                </dd>
+            {product && (
+              <div className="flex items-center gap-3 mb-4">
+                {productImage && (
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={productImage} alt={product.name} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div>
+                  <a
+                    href={`/p/${product.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-gray-900 hover:text-indigo-600 transition"
+                  >
+                    {product.name} ↗
+                  </a>
+                </div>
               </div>
+            )}
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div>
                 <dt className="text-gray-400">Quantity</dt>
                 <dd className="font-medium text-gray-900 mt-0.5">{lead.quantity}</dd>
@@ -229,9 +288,15 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                   </dd>
                 </div>
               )}
+              <div>
+                <dt className="text-gray-400">Serious-buyer confirmation</dt>
+                <dd className={`font-medium mt-0.5 ${lead.buyer_confirmed ? "text-green-700" : "text-gray-500"}`}>
+                  {lead.buyer_confirmed ? "Confirmed ✓" : "Not confirmed"}
+                </dd>
+              </div>
               {lead.utm_source && (
                 <div>
-                  <dt className="text-gray-400">Source</dt>
+                  <dt className="text-gray-400">Traffic source</dt>
                   <dd className="font-medium text-gray-900 mt-0.5">
                     {[lead.utm_source, lead.utm_medium, lead.utm_campaign]
                       .filter(Boolean)
@@ -239,28 +304,32 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                   </dd>
                 </div>
               )}
+              {lead.utm_content && (
+                <div>
+                  <dt className="text-gray-400">Ad content</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">{lead.utm_content}</dd>
+                </div>
+              )}
             </dl>
           </div>
 
-          {/* Status history */}
-          {history && history.length > 0 && (
+          {/* Timeline: status changes + contact activity */}
+          {timeline.length > 0 && (
             <div className="bg-white rounded-2xl border border-gray-100 p-5">
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
-                History
+                Timeline
               </h2>
               <ol className="space-y-3">
-                {history.map((h) => (
-                  <li key={h.id} className="flex items-start gap-3 text-sm">
+                {timeline.map((entry) => (
+                  <li key={entry.id} className="flex items-start gap-3 text-sm">
                     <span className="w-1.5 h-1.5 rounded-full bg-gray-300 mt-2 shrink-0" />
                     <div>
-                      <span className="text-gray-700 font-medium capitalize">
-                        {h.from_status ?? "—"} → {h.to_status}
-                      </span>
-                      {h.note && (
-                        <p className="text-gray-400 text-xs mt-0.5">{h.note}</p>
+                      <span className="text-gray-700 font-medium">{entry.text}</span>
+                      {entry.sub && (
+                        <p className="text-gray-400 text-xs mt-0.5">{entry.sub}</p>
                       )}
                       <p className="text-gray-300 text-xs mt-0.5">
-                        {new Date(h.created_at).toLocaleString("en-NG", {
+                        {new Date(entry.created_at).toLocaleString("en-NG", {
                           day: "numeric",
                           month: "short",
                           hour: "2-digit",
@@ -285,6 +354,16 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 callNotes={lead.call_notes}
                 canChangeStatus={canChangeStatus}
                 canEditNotes={canEditNotes}
+              />
+            </div>
+          )}
+          {canEditNotes && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <FollowUpPanel
+                leadId={lead.id}
+                followUpAt={lead.follow_up_at}
+                lastContactedAt={lead.last_contacted_at}
+                actorName={staff.fullName}
               />
             </div>
           )}
