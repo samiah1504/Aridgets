@@ -110,9 +110,12 @@ function MoreMenu({
     return () => document.removeEventListener("mousedown", onDown);
   }, [onClose]);
 
-  function run(action: (id: string) => Promise<void>) {
+  function run(action: (id: string) => Promise<{ error: string | null } | void>) {
     startTransition(async () => {
-      await action(product.id);
+      const result = await action(product.id);
+      if (result && result.error) {
+        window.alert(`Could not complete the action: ${result.error}`);
+      }
       onClose();
     });
   }

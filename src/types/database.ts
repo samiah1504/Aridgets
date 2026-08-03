@@ -276,7 +276,7 @@ export type Database = {
         Row: {
           id: string;
           order_number: string;
-          product_id: string;
+          product_id: string | null;
           name: string;
           phone: string;
           email: string | null;

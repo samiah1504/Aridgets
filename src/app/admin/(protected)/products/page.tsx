@@ -22,6 +22,7 @@ export default async function ProductsPage() {
   // Aggregate lead counts per product
   const leadMap: Record<string, { total: number; confirmed: number }> = {};
   for (const l of leads ?? []) {
+    if (!l.product_id) continue;
     const s = (leadMap[l.product_id] ??= { total: 0, confirmed: 0 });
     s.total++;
     if (l.status === "confirmed") s.confirmed++;

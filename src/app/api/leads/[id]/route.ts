@@ -129,7 +129,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
   }
 
   // Fire CAPI Purchase if transitioning to confirmed for the first time
-  if (newStatus === "confirmed" && !lead.event_id_purchase) {
+  // (skipped when the product has since been deleted)
+  if (newStatus === "confirmed" && !lead.event_id_purchase && lead.product_id) {
     const eventIdPurchase = update.event_id_purchase as string;
     const serviceClient = createServiceClient();
     const { data: product } = await serviceClient

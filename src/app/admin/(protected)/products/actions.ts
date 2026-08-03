@@ -21,12 +21,21 @@ export async function restoreProduct(id: string) {
   revalidatePath("/admin/products");
 }
 
-export async function deleteProduct(id: string) {
+export async function deleteProduct(id: string): Promise<{ error: string | null }> {
   const supabase = await createClient();
-  // Remove media first to avoid FK constraint violations
-  await supabase.from("product_media").delete().eq("product_id", id);
-  await supabase.from("products").delete().eq("id", id);
+
+  // Remove uploaded files for this product from storage (best-effort —
+  // media/variant/tracking rows are removed by ON DELETE CASCADE)
+  const { data: files } = await supabase.storage.from("product-media").list(id);
+  if (files?.length) {
+    await supabase.storage
+      .from("product-media")
+      .remove(files.map((f) => `${id}/${f.name}`));
+  }
+
+  const { error } = await supabase.from("products").delete().eq("id", id);
   revalidatePath("/admin/products");
+  return { error: error?.message ?? null };
 }
 
 export async function duplicateProduct(id: string) {
