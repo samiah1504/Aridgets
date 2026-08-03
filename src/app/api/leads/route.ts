@@ -174,7 +174,9 @@ export async function POST(request: NextRequest) {
       request.headers.get("referer") ??
       `https://${request.headers.get("host") ?? "unknown"}`;
 
-    sendCAPIEvent({
+    // Awaited: on serverless the function freezes once the response is sent —
+    // an un-awaited send can be killed mid-flight and never reach Meta.
+    await sendCAPIEvent({
       pixelId: pixelData.pixel_id,
       accessToken: pixelData.capi_access_token,
       testEventCode: pixelData.capi_test_event_code,
@@ -198,9 +200,10 @@ export async function POST(request: NextRequest) {
     }).catch((err: unknown) => console.error("CAPI Lead:", err));
   }
 
-  // Push notification to admin devices (non-blocking); skip test orders
+  // Push notification to admin devices; skip test orders.
+  // Awaited for the same serverless reason — otherwise it may never send.
   if (!isTest) {
-    sendPushToAll({
+    await sendPushToAll({
       title: `New order: ${result.order_number}`,
       body: `${result.name} — ₦${result.total.toLocaleString("en-NG")}`,
       url: "/admin/leads",

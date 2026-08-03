@@ -102,10 +102,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     } else if (lead.dropped_at) {
       update.dropped_at = null;
     }
-    // Generate purchase event ID now (before the update) so we can fire CAPI after
-    if (s === "confirmed" && !lead.event_id_purchase) {
-      update.event_id_purchase = crypto.randomUUID();
-    }
   }
 
   // Apply update
@@ -128,10 +124,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     });
   }
 
-  // Fire CAPI Purchase if transitioning to confirmed for the first time
-  // (skipped when the product has since been deleted)
+  // Fire CAPI Purchase exactly once per lead. The event ID is claimed with an
+  // atomic conditional update — only the request that wins the claim sends the
+  // event, so concurrent double-confirms can never fire twice.
+  // (Skipped when the product has since been deleted.)
   if (newStatus === "confirmed" && !lead.event_id_purchase && lead.product_id) {
-    const eventIdPurchase = update.event_id_purchase as string;
+    const eventIdPurchase = crypto.randomUUID();
+    const { data: claimed } = await supabase
+      .from("leads")
+      .update({ event_id_purchase: eventIdPurchase })
+      .eq("id", id)
+      .is("event_id_purchase", null)
+      .select("id");
+
+    if (!claimed || claimed.length === 0) {
+      // Another request already claimed the Purchase for this lead
+      return NextResponse.json({ ok: true });
+    }
+
     const serviceClient = createServiceClient();
     const { data: product } = await serviceClient
       .from("products")
@@ -141,7 +151,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
 
     if (product?.pixel_id && product?.capi_access_token) {
       const nameParts = (lead.name ?? "").split(/\s+/);
-      sendCAPIEvent({
+      // Awaited: on serverless the function freezes once the response is sent —
+      // an un-awaited send can be killed mid-flight and never reach Meta.
+      await sendCAPIEvent({
         pixelId: product.pixel_id,
         accessToken: product.capi_access_token,
         testEventCode: product.capi_test_event_code,
