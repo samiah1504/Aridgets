@@ -1,3 +1,5 @@
+import ProductVideo from "./ProductVideo";
+
 interface MediaItem {
   id: string;
   url: string;
@@ -5,6 +7,7 @@ interface MediaItem {
   kind: string;
   slot: string;
   sort_order: number;
+  provider?: string | null;
 }
 
 export default function MediaGallery({
@@ -17,8 +20,21 @@ export default function MediaGallery({
   const images = media
     .filter((m) => m.kind === "image")
     .sort((a, b) => a.sort_order - b.sort_order);
+  const videos = media
+    .filter((m) => m.kind === "video")
+    .sort((a, b) => a.sort_order - b.sort_order);
 
-  if (!images.length) return null;
+  if (!images.length && !videos.length) return null;
+
+  if (!images.length) {
+    return (
+      <section className="px-4 py-6 max-w-lg mx-auto space-y-3">
+        {videos.map((v) => (
+          <ProductVideo key={v.id} url={v.url} provider={v.provider ?? null} title={v.alt ?? productName} />
+        ))}
+      </section>
+    );
+  }
 
   const hero = images.find((m) => m.slot === "hero") ?? images[0];
   const gallery = images.filter((m) => m !== hero);
@@ -43,6 +59,13 @@ export default function MediaGallery({
               className="w-full rounded-xl object-cover aspect-square"
               loading="lazy"
             />
+          ))}
+        </div>
+      )}
+      {videos.length > 0 && (
+        <div className="space-y-3 mt-3">
+          {videos.map((v) => (
+            <ProductVideo key={v.id} url={v.url} provider={v.provider ?? null} title={v.alt ?? productName} />
           ))}
         </div>
       )}

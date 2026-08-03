@@ -4,6 +4,7 @@ import FAQ from "@/components/sections/FAQ";
 import Guarantee from "@/components/sections/Guarantee";
 import Urgency from "@/components/sections/Urgency";
 import VariantAwareOrderForm from "./VariantAwareOrderForm";
+import ProductVideo from "@/components/sections/ProductVideo";
 import { formatNGN } from "@/lib/utils/currency";
 import type { ThemeProps } from "./GadgetTheme";
 
@@ -17,6 +18,7 @@ export default function FurnitureTheme({
     .sort((a, b) => a.sort_order - b.sort_order);
   const heroImg = images.find((m) => m.slot === "hero") ?? images[0];
   const galleryImgs = images.slice(0, 6);
+  const videos = media.filter((m) => m.kind === "video").sort((a, b) => a.sort_order - b.sort_order);
 
   const specChips = [
     content.material && { label: "Material", value: content.material },
@@ -159,20 +161,29 @@ export default function FurnitureTheme({
       )}
 
       {/* ── Media gallery ───────────────────────────────────────────────────── */}
-      {enabled.has("mediaGallery") && galleryImgs.length > 1 && (
+      {enabled.has("mediaGallery") && (galleryImgs.length > 1 || videos.length > 0) && (
         <section className="max-w-6xl mx-auto px-4 py-10">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {galleryImgs.map((img) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={img.id}
-                src={img.url}
-                alt={img.alt ?? ""}
-                className="w-full aspect-square object-cover rounded-xl"
-                loading="lazy"
-              />
-            ))}
-          </div>
+          {galleryImgs.length > 1 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {galleryImgs.map((img) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={img.id}
+                  src={img.url}
+                  alt={img.alt ?? ""}
+                  className="w-full aspect-square object-cover rounded-xl"
+                  loading="lazy"
+                />
+              ))}
+            </div>
+          )}
+          {videos.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 max-w-4xl mx-auto">
+              {videos.map((v) => (
+                <ProductVideo key={v.id} url={v.url} provider={v.provider} title={v.alt ?? product.name} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
