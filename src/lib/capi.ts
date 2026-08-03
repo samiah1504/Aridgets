@@ -11,7 +11,7 @@ export interface CAPIEventPayload {
   pixelId: string;
   accessToken: string;
   testEventCode?: string | null;
-  eventName: "Lead" | "Purchase";
+  eventName: "PageView" | "ViewContent" | "Lead" | "Purchase";
   eventId: string;
   eventTime: number;
   sourceUrl: string;
@@ -25,8 +25,8 @@ export interface CAPIEventPayload {
   clientUserAgent?: string | null;
   fbp?: string | null;
   fbc?: string | null;
-  currency: string;
-  value: number;
+  currency?: string;
+  value?: number;
   contentName?: string;
   /** When provided, the send result is recorded in tracking_events */
   log?: { productId: string; leadId?: string | null; test?: boolean };
@@ -70,6 +70,14 @@ export async function sendCAPIEvent(payload: CAPIEventPayload): Promise<void> {
   if (payload.fbp) userData.fbp = payload.fbp;
   if (payload.fbc) userData.fbc = payload.fbc;
 
+  const customData: Record<string, unknown> = {};
+  if (payload.currency) customData.currency = payload.currency;
+  if (payload.value !== undefined) customData.value = payload.value;
+  if (payload.contentName) {
+    customData.content_type = "product";
+    customData.content_name = payload.contentName;
+  }
+
   const body: Record<string, unknown> = {
     data: [
       {
@@ -79,12 +87,7 @@ export async function sendCAPIEvent(payload: CAPIEventPayload): Promise<void> {
         action_source: "website",
         event_source_url: payload.sourceUrl,
         user_data: userData,
-        custom_data: {
-          currency: payload.currency,
-          value: payload.value,
-          content_type: "product",
-          ...(payload.contentName && { content_name: payload.contentName }),
-        },
+        ...(Object.keys(customData).length > 0 && { custom_data: customData }),
       },
     ],
     access_token: payload.accessToken,
