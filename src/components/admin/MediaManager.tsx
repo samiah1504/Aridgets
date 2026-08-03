@@ -59,12 +59,18 @@ export default function MediaManager({ productId }: Props) {
   // ── Upload ──────────────────────────────────────────────────────────────────
 
   async function handleFileUpload(file: File) {
-    if (!file.type.startsWith("image/")) {
-      setError("Only image files (JPEG, PNG, WebP, GIF, AVIF) can be uploaded.");
+    const isImage = file.type.startsWith("image/");
+    const isVideo = ["video/mp4", "video/webm", "video/quicktime"].includes(file.type);
+    if (!isImage && !isVideo) {
+      setError("Only images (JPEG, PNG, WebP, GIF, AVIF) or videos (MP4, WebM, MOV) can be uploaded.");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setError("File is too large. Maximum size is 10 MB.");
+    if (isImage && file.size > 10 * 1024 * 1024) {
+      setError("Image is too large. Maximum size is 10 MB.");
+      return;
+    }
+    if (isVideo && file.size > 50 * 1024 * 1024) {
+      setError("Video is too large. Maximum size is 50 MB — for longer videos, upload to YouTube and add it via 'From URL'.");
       return;
     }
 
@@ -91,10 +97,10 @@ export default function MediaManager({ productId }: Props) {
 
     const { error: dbError } = await supabase.from("product_media").insert({
       product_id: productId,
-      kind: "image" as MediaKind,
+      kind: (isVideo ? "video" : "image") as MediaKind,
       url: publicUrl,
-      provider: "upload" as MediaProvider,
-      slot: addSlot,
+      provider: (isVideo ? "mp4" : "upload") as MediaProvider,
+      slot: isVideo ? ("gallery" as MediaSlot) : addSlot,
       sort_order: media.length,
       alt: addAlt.trim() || null,
     });
@@ -151,20 +157,19 @@ export default function MediaManager({ productId }: Props) {
 
   // ── Existing media management ───────────────────────────────────────────────
 
-  async function deleteMedia(id: string, url: string, provider: MediaProvider | null) {
+  async function deleteMedia(id: string, url: string) {
     if (!confirm("Remove this media item?")) return;
     const supabase = createClient();
 
-    // If it was uploaded to Supabase Storage, delete the object too
-    if (provider === "upload") {
-      const { data: { publicUrl: base } } = supabase.storage
-        .from("product-media")
-        .getPublicUrl("");
-      const prefix = base.replace(/\/$/, "");
-      if (url.startsWith(prefix)) {
-        const storagePath = url.slice(prefix.length + 1); // strip leading "/"
-        await supabase.storage.from("product-media").remove([storagePath]);
-      }
+    // If the file lives in our Supabase Storage bucket (uploaded image or
+    // video), delete the object too — regardless of the provider label
+    const { data: { publicUrl: base } } = supabase.storage
+      .from("product-media")
+      .getPublicUrl("");
+    const prefix = base.replace(/\/$/, "");
+    if (url.startsWith(prefix)) {
+      const storagePath = url.slice(prefix.length + 1); // strip leading "/"
+      await supabase.storage.from("product-media").remove([storagePath]);
     }
 
     await supabase.from("product_media").delete().eq("id", id);
@@ -249,7 +254,7 @@ export default function MediaManager({ productId }: Props) {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm,video/quicktime"
               className="sr-only"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -282,10 +287,10 @@ export default function MediaManager({ productId }: Props) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4-4m0 0l4 4m-4-4v9M20 16l-4-4m0 0l-4 4m4-4V7a4 4 0 00-4-4H8a4 4 0 00-4 4v4" />
                   </svg>
                   <p className="text-sm font-medium text-gray-600">
-                    Drag &amp; drop an image here or{" "}
+                    Drag &amp; drop an image or video here or{" "}
                     <span className="text-indigo-600 underline">browse</span>
                   </p>
-                  <p className="text-xs">JPEG · PNG · WebP · GIF · AVIF · max 10 MB</p>
+                  <p className="text-xs">Images (max 10 MB) · Videos MP4 / WebM / MOV (max 50 MB)</p>
                 </div>
               )}
             </div>
@@ -413,7 +418,7 @@ export default function MediaManager({ productId }: Props) {
                   ↓
                 </button>
                 <button
-                  onClick={() => deleteMedia(item.id, item.url, item.provider)}
+                  onClick={() => deleteMedia(item.id, item.url)}
                   className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-red-400 transition rounded text-xl leading-none"
                   title="Delete"
                 >
