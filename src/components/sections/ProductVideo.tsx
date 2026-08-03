@@ -9,17 +9,18 @@ interface Props {
 }
 
 type Parsed =
-  | { type: "youtube"; id: string }
-  | { type: "vimeo"; id: string }
+  | { type: "youtube"; id: string; vertical: boolean }
+  | { type: "vimeo"; id: string; vertical: boolean }
   | { type: "mp4" };
 
 function parseVideo(url: string, provider: string | null): Parsed {
   const yt = url.match(
     /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{6,})/
   );
-  if (yt) return { type: "youtube", id: yt[1] };
+  // YouTube Shorts are portrait — render them in a 9:16 frame
+  if (yt) return { type: "youtube", id: yt[1], vertical: url.includes("/shorts/") };
   const vimeo = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (vimeo) return { type: "vimeo", id: vimeo[1] };
+  if (vimeo) return { type: "vimeo", id: vimeo[1], vertical: false };
   if (provider === "youtube" || provider === "vimeo") return { type: "mp4" }; // unparseable URL — fall back
   return { type: "mp4" };
 }
@@ -31,16 +32,22 @@ export default function ProductVideo({ url, provider, title }: Props) {
   const parsed = parseVideo(url, provider);
 
   if (parsed.type === "mp4") {
+    // Uploaded videos keep their natural aspect ratio — square stays square,
+    // portrait stays portrait — capped so tall videos don't fill the screen
     return (
       <video
         controls
         playsInline
         preload="metadata"
-        className="w-full rounded-2xl aspect-video bg-black"
+        className="block w-auto h-auto max-w-full max-h-[75vh] mx-auto rounded-2xl bg-black"
         src={url}
       />
     );
   }
+
+  const frameClass = parsed.vertical
+    ? "w-full max-w-[360px] mx-auto rounded-2xl overflow-hidden aspect-[9/16] bg-black"
+    : "w-full rounded-2xl overflow-hidden aspect-video bg-black";
 
   if (playing) {
     const embedSrc =
@@ -48,7 +55,7 @@ export default function ProductVideo({ url, provider, title }: Props) {
         ? `https://www.youtube-nocookie.com/embed/${parsed.id}?autoplay=1&playsinline=1&rel=0`
         : `https://player.vimeo.com/video/${parsed.id}?autoplay=1`;
     return (
-      <div className="w-full rounded-2xl overflow-hidden aspect-video bg-black">
+      <div className={frameClass}>
         <iframe
           src={embedSrc}
           title={title}
@@ -70,7 +77,7 @@ export default function ProductVideo({ url, provider, title }: Props) {
       type="button"
       onClick={() => setPlaying(true)}
       aria-label={`Play video: ${title}`}
-      className="relative w-full rounded-2xl overflow-hidden aspect-video bg-gray-900 group"
+      className={`relative group ${frameClass}`}
     >
       {thumbnail && (
         // eslint-disable-next-line @next/next/no-img-element
