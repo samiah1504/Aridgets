@@ -85,16 +85,22 @@ export async function POST(request: NextRequest) {
 
   let unitPrice = product.price;
 
-  // If a variant was selected, use its price_override (server-side validation)
+  // If a variant was selected, validate it and use its price_override.
+  // Only a variant that actually exists is stored — a bogus ID from a
+  // tampered request must never make the insert fail.
+  let validVariantId: string | null = null;
   if (variantId) {
     const { data: variant } = await supabase
       .from("product_variants")
-      .select("price_override, active")
+      .select("id, price_override, active")
       .eq("id", variantId)
       .eq("product_id", productId)
       .single();
-    if (variant?.active && variant.price_override !== null && variant.price_override !== undefined) {
-      unitPrice = variant.price_override as number;
+    if (variant?.active) {
+      validVariantId = variant.id;
+      if (variant.price_override !== null && variant.price_override !== undefined) {
+        unitPrice = variant.price_override as number;
+      }
     }
   }
 
@@ -127,14 +133,18 @@ export async function POST(request: NextRequest) {
     utm_content: typeof b.utm_content === "string" ? b.utm_content : null,
     client_ip: clientIp,
     client_user_agent: clientUserAgent,
-    variant_id: variantId || undefined,
+    variant_id: validVariantId || undefined,
     selected_options: rawSelectedOptions || undefined,
     is_test: b.is_test === true,
     tracking_session_id:
       typeof b.session_id === "string" ? b.session_id.slice(0, 64) : null,
   };
 
-  const { data: lead, error: insertError } = await supabase
+  // Insert with the service role: direct anonymous inserts to the leads table
+  // are closed at the database level (bots were able to probe the public REST
+  // endpoint) — this validated route is now the only way in.
+  const insertClient = createServiceClient();
+  const { data: lead, error: insertError } = await insertClient
     .from("leads")
     .insert(insertPayload)
     .select("id, order_number, total, name, event_id_lead")
