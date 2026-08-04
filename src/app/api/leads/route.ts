@@ -152,6 +152,20 @@ export async function POST(request: NextRequest) {
 
   if (insertError || !lead) {
     console.error("Lead insert error:", insertError);
+    // Record the failed attempt so it is visible in the admin (Pixel & CAPI
+    // page) — a customer who hit an error must never disappear silently.
+    await insertClient
+      .from("tracking_events")
+      .insert({
+        product_id: productId,
+        session_id: insertPayload.tracking_session_id ?? null,
+        event_name: "Lead",
+        source: "server",
+        status: "failed",
+        error: `Order save failed: ${insertError?.message ?? "unknown error"}`,
+        test: insertPayload.is_test ?? false,
+      })
+      .then(() => {});
     return NextResponse.json(
       { error: "Failed to place order. Please try again." },
       { status: 500 }
