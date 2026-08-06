@@ -268,7 +268,7 @@ export default function ProductForm({ product: initial, permissions }: Props) {
             <FormInput type="number" value={product.compare_at_price ?? ""} onChange={(v) => setField("compare_at_price", v ? Number(v) : null)} />
           </Field>
         </div>
-        <Field label="WhatsApp number" hint="Optional — for order confirmation messages">
+        <Field label="WhatsApp number" hint="Shows a floating 'Chat with us' WhatsApp button on the sales page. Leave empty to hide it.">
           <FormInput value={product.whatsapp_number ?? ""} onChange={(v) => setField("whatsapp_number", v || null)} placeholder="+2348012345678" />
         </Field>
         <label className="flex items-center gap-3 cursor-pointer select-none">

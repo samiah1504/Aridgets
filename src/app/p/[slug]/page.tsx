@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SITE_URL } from "@/lib/config";
 import type { ProductContent, ProductTheme, SectionConfig, ProductOption, ProductVariant, TemplateType, OptionDisplayType } from "@/types";
 import MetaPixel from "@/components/MetaPixel";
+import WhatsAppButton from "@/components/sections/WhatsAppButton";
 import GadgetTheme from "@/components/themes/GadgetTheme";
 import FurnitureTheme from "@/components/themes/FurnitureTheme";
 import KidsToyTheme from "@/components/themes/KidsToyTheme";
@@ -17,7 +18,7 @@ async function getProduct(slug: string) {
   const { data } = await supabase
     .from("products")
     .select(
-      "id, name, slug, status, price, compare_at_price, theme, content, sections, pixel_id, template_type"
+      "id, name, slug, status, price, compare_at_price, theme, content, sections, pixel_id, whatsapp_number, template_type"
     )
     .eq("slug", slug)
     .eq("status", "live")
@@ -197,6 +198,10 @@ export default async function ProductPage({
       className="min-h-screen"
     >
       <ThemeComponent {...themeProps} />
+
+      {product.whatsapp_number && (
+        <WhatsAppButton number={product.whatsapp_number} productName={product.name} />
+      )}
 
       {product.pixel_id && (
         <MetaPixel
