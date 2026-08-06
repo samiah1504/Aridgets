@@ -677,6 +677,23 @@ export default function ProductForm({ product: initial, permissions }: Props) {
             </p>
           </div>
         </section>
+
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Recent Orders Popup</h3>
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={content.recentOrdersEnabled !== false}
+              onChange={(e) => setContent({ recentOrdersEnabled: e.target.checked })}
+              className="w-4 h-4 accent-indigo-600"
+            />
+            <span className="text-sm text-gray-700 font-medium">Show recent-order notifications on the sales page</span>
+          </label>
+          <p className="text-xs text-gray-400 mt-2">
+            A small popup in the bottom-left corner showing real recent orders (first name, city
+            and product only). No fake orders — it stays hidden until you have real ones.
+          </p>
+        </section>
       </div>
     ),
 

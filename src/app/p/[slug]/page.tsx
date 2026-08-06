@@ -5,6 +5,7 @@ import { SITE_URL } from "@/lib/config";
 import type { ProductContent, ProductTheme, SectionConfig, ProductOption, ProductVariant, TemplateType, OptionDisplayType } from "@/types";
 import MetaPixel from "@/components/MetaPixel";
 import WhatsAppButton from "@/components/sections/WhatsAppButton";
+import RecentOrdersPopup from "@/components/sections/RecentOrdersPopup";
 import GadgetTheme from "@/components/themes/GadgetTheme";
 import FurnitureTheme from "@/components/themes/FurnitureTheme";
 import KidsToyTheme from "@/components/themes/KidsToyTheme";
@@ -201,6 +202,10 @@ export default async function ProductPage({
 
       {product.whatsapp_number && (
         <WhatsAppButton number={product.whatsapp_number} productName={product.name} />
+      )}
+
+      {content.recentOrdersEnabled !== false && (
+        <RecentOrdersPopup productId={product.id} />
       )}
 
       {product.pixel_id && (

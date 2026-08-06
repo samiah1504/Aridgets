@@ -79,6 +79,7 @@ export interface ProductContent {
   faq?: Array<{ question: string; answer: string }>;
   footerText?: string;
   seriousBuyer?: SeriousBuyerNotice;
+  recentOrdersEnabled?: boolean; // default true — social-proof popup on the sales page
   orderFormTitle?: string;
   orderSuccessHeadline?: string;
   orderSuccessBody?: string;
