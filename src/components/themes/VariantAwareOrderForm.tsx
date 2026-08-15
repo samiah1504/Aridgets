@@ -517,7 +517,7 @@ export default function VariantAwareOrderForm({
           </button>
 
           <p className="text-center text-xs text-gray-400">
-            No online payment. You pay cash only when the rider delivers.
+            No payment before delivery. Pay in full when your order is delivered.
           </p>
         </form>
       </div>
