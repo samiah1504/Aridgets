@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { requirePerm, hasPerm } from "@/lib/auth";
 import { formatNGN } from "@/lib/utils/currency";
+import { formatDeliveryDate } from "@/lib/purchaseOptions";
 import LeadActions from "@/components/admin/LeadActions";
 import AssignLead from "@/components/admin/AssignLead";
 import ContactButtons from "@/components/admin/ContactButtons";
@@ -277,6 +278,36 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
               </div>
             )}
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+              {lead.purchase_option && (
+                <div className="col-span-2 rounded-lg bg-gray-50 px-3 py-2.5">
+                  <dt className="text-gray-400">Option ordered</dt>
+                  <dd className="font-semibold text-gray-900 mt-0.5">{lead.purchase_option.name}</dd>
+                  {lead.purchase_option.description && (
+                    <dd className="text-xs text-gray-500 mt-0.5">{lead.purchase_option.description}</dd>
+                  )}
+                  {lead.purchase_option.includes.length > 0 && (
+                    <dd className="text-xs text-gray-600 mt-1">
+                      Includes: {lead.purchase_option.includes.join(" · ")}
+                    </dd>
+                  )}
+                  <dd className="text-xs text-gray-400 mt-1">
+                    Price at time of order — later product changes don&apos;t affect this order.
+                  </dd>
+                </div>
+              )}
+              {lead.delivery_preference && (
+                <div className="col-span-2">
+                  <dt className="text-gray-400">Delivery preference</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">
+                    {lead.delivery_preference === "date" && lead.delivery_date
+                      ? `Preferred date: ${formatDeliveryDate(lead.delivery_date)}`
+                      : "As soon as possible"}
+                  </dd>
+                  {lead.delivery_preference === "date" && (
+                    <dd className="text-xs text-gray-400 mt-0.5">Customer preference — confirm on the call.</dd>
+                  )}
+                </div>
+              )}
               <div>
                 <dt className="text-gray-400">Quantity</dt>
                 <dd className="font-medium text-gray-900 mt-0.5">{lead.quantity}</dd>

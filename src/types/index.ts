@@ -16,7 +16,45 @@ export interface Role {
   created_at: string;
 }
 
-export type TemplateType = "furniture" | "gadget" | "kids_toy" | "kids_fashion";
+export type TemplateType =
+  | "furniture"
+  | "gadget"
+  | "kids_toy"
+  | "kids_fashion"
+  | "options_bundles";
+
+// ── Purchasing options (Product Options & Bundles template) ─────────────────
+// Stored in products.content.purchaseOptions; array order = display order.
+
+export interface PurchaseOption {
+  id: string;
+  name: string;
+  description?: string;
+  price: number; // whole naira, per unit
+  imageUrl?: string;
+  includes?: string[];
+  active: boolean;
+  minQty?: number; // default 1
+  maxQty?: number; // default 20
+}
+
+// What the customer bought, frozen onto the lead at order time
+export interface PurchaseOptionSnapshot {
+  id: string;
+  name: string;
+  description: string | null;
+  includes: string[];
+  unit_price: number;
+}
+
+export type DeliveryPreference = "asap" | "date";
+
+export interface DeliveryPreferenceSettings {
+  enabled?: boolean; // default: on for options_bundles, off for other templates
+  label?: string;
+  asapLabel?: string;
+  dateLabel?: string;
+}
 export type OptionDisplayType = "buttons" | "colour_swatch" | "dropdown";
 
 export type ProductStatus = "draft" | "live" | "archived";
@@ -80,6 +118,10 @@ export interface ProductContent {
   footerText?: string;
   seriousBuyer?: SeriousBuyerNotice;
   recentOrdersEnabled?: boolean; // default true — social-proof popup on the sales page
+  productDescription?: string;
+  purchaseOptions?: PurchaseOption[];
+  purchaseOptionsHeading?: string;
+  deliveryPreference?: DeliveryPreferenceSettings;
   orderFormTitle?: string;
   orderSuccessHeadline?: string;
   orderSuccessBody?: string;

@@ -9,7 +9,7 @@ import { formatNGN } from "@/lib/utils/currency";
 import type { ThemeProps } from "./GadgetTheme";
 
 export default function FurnitureTheme({
-  product, content, theme, sections, media, options, variants, tracking,
+  product, content, theme, sections, media, options, variants, tracking, delivery, today,
 }: ThemeProps) {
   const enabled = new Set(sections.filter((s) => s.enabled).map((s) => s.key));
 
@@ -251,6 +251,8 @@ export default function FurnitureTheme({
           variants={variants}
           primaryColor={theme.primary}
           notice={content.seriousBuyer}
+          delivery={delivery}
+          today={today}
           title={content.orderFormTitle}
           successHeadline={content.orderSuccessHeadline}
           successBody={content.orderSuccessBody}

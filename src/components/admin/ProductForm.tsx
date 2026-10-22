@@ -9,6 +9,13 @@ import type { ProductContent, ProductTheme, SectionConfig, TemplateType } from "
 import VariationsEditor from "./VariationsEditor";
 import MediaManager from "./MediaManager";
 import BulkField from "./BulkField";
+import PurchaseOptionsEditor from "./PurchaseOptionsEditor";
+import {
+  DELIVERY_DEFAULTS,
+  lowestPrice,
+  resolveDeliverySettings,
+  validatePurchaseOptions,
+} from "@/lib/purchaseOptions";
 import {
   formatBenefits,
   formatFaqs,
@@ -41,7 +48,7 @@ const SECTION_LABELS: Record<string, string> = {
 
 const FONTS = ["Inter", "Poppins", "Lato", "Montserrat", "Nunito", "Raleway"];
 
-const TABS = ["Basic", "Design", "Theme", "Content", "Sections", "Tracking", "Media", "Variations"] as const;
+const TABS = ["Basic", "Design", "Theme", "Content", "Options", "Sections", "Tracking", "Media", "Variations"] as const;
 type Tab = (typeof TABS)[number];
 
 const TEMPLATE_TYPES: { value: TemplateType; label: string; description: string }[] = [
@@ -49,6 +56,7 @@ const TEMPLATE_TYPES: { value: TemplateType; label: string; description: string 
   { value: "furniture", label: "Furniture", description: "Premium split-hero, serif typography, warm palette." },
   { value: "kids_toy", label: "Kids Toy", description: "Bright, playful layout with age badges and emoji benefits." },
   { value: "kids_fashion", label: "Kids Fashion", description: "Elegant fashion layout with large imagery and size selectors." },
+  { value: "options_bundles", label: "Product Options & Bundles", description: "For products sold as different sets, bundles or packages. Customers pick one option and a quantity; prices come from the Options tab." },
 ];
 
 // ─── Reusable field components (module-level — MUST stay outside ProductForm)
@@ -185,12 +193,15 @@ export default function ProductForm({ product: initial, permissions }: Props) {
   const [error, setError] = useState("");
   const [bulk, setBulk] = useState<BulkText>(() => toBulkText(initial.content as ProductContent));
   const [showContentErrors, setShowContentErrors] = useState(false);
+  const [showOptionErrors, setShowOptionErrors] = useState(false);
 
   const canPublish = hasPerm(permissions, "products.publish");
   const canEditTracking = hasPerm(permissions, "tracking.edit");
-  const visibleTabs = TABS.filter((t) => t !== "Tracking" || canEditTracking);
-
   const content = product.content as ProductContent;
+  const usesPurchaseOptions = product.template_type === "options_bundles";
+  const visibleTabs = TABS.filter(
+    (t) => (t !== "Tracking" || canEditTracking) && (t !== "Options" || usesPurchaseOptions)
+  );
   const theme = product.theme as ProductTheme;
   const sections = product.sections as SectionConfig[];
 
@@ -221,6 +232,12 @@ export default function ProductForm({ product: initial, permissions }: Props) {
       : []),
     ...(parsed.faq.errors.length ? [`FAQs: ${parsed.faq.errors.length} line(s) to fix`] : []),
   ];
+
+  const purchaseOptions = content.purchaseOptions ?? [];
+  const optionProblems = usesPurchaseOptions
+    ? validatePurchaseOptions(purchaseOptions, { publishing: product.status === "live" })
+    : [];
+  const delivery = resolveDeliverySettings(content, product.template_type);
 
   function setBulkField(key: keyof BulkText, value: string) {
     setBulk((b) => ({ ...b, [key]: value }));
@@ -260,9 +277,27 @@ export default function ProductForm({ product: initial, permissions }: Props) {
       return;
     }
     setShowContentErrors(false);
+    if (optionProblems.length > 0) {
+      setShowOptionErrors(true);
+      setActiveTab("Options");
+      setError("Fix the purchasing options before saving");
+      return;
+    }
+    setShowOptionErrors(false);
     setSaving(true);
+    // The listed price (homepage, pixel ViewContent) follows the cheapest option
+    const fromPrice = usesPurchaseOptions
+      ? lowestPrice(purchaseOptions.filter((o) => o.active))
+      : null;
     const nextContent: ProductContent = {
       ...content,
+      ...(content.purchaseOptions && {
+        purchaseOptions: content.purchaseOptions.map((o) => ({
+          ...o,
+          name: o.name.trim(),
+          description: o.description?.trim() || undefined,
+        })),
+      }),
       trustRow: parsed.trustRow.items,
       benefits: parsed.benefits.items,
       howItWorksSteps: parsed.steps.items,
@@ -276,7 +311,7 @@ export default function ProductForm({ product: initial, permissions }: Props) {
       .update({
         name: product.name,
         slug: product.slug,
-        price: product.price,
+        price: fromPrice ?? product.price,
         compare_at_price: product.compare_at_price,
         whatsapp_number: product.whatsapp_number,
         show_on_homepage: product.show_on_homepage,
@@ -298,7 +333,7 @@ export default function ProductForm({ product: initial, permissions }: Props) {
     if (err) {
       setError(err.message);
     } else {
-      setProduct((p) => ({ ...p, content: nextContent }));
+      setProduct((p) => ({ ...p, content: nextContent, price: fromPrice ?? p.price }));
       setSaved(true);
     }
     setSaving(false);
@@ -331,7 +366,10 @@ export default function ProductForm({ product: initial, permissions }: Props) {
           </select>
         </Field>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Price (NGN)" hint="In naira, e.g. 15000">
+          <Field
+            label="Price (NGN)"
+            hint={usesPurchaseOptions ? "Set automatically to the cheapest option when you save" : "In naira, e.g. 15000"}
+          >
             <FormInput type="number" value={product.price} onChange={(v) => setField("price", Number(v))} />
           </Field>
           <Field label="Compare-at price">
@@ -466,6 +504,26 @@ export default function ProductForm({ product: initial, permissions }: Props) {
           </Field>
         </ContentSection>
 
+        <ContentSection
+          title="Product Details"
+          description="Description, materials, dimensions and delivery information. Shown by templates that have a product details area."
+        >
+          <Field label="Product description" hint="Leave a blank line between paragraphs.">
+            <FormTextarea value={content.productDescription ?? ""} onChange={(v) => setContent({ productDescription: v })} rows={5} />
+          </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Materials">
+              <FormInput value={content.material ?? ""} onChange={(v) => setContent({ material: v })} />
+            </Field>
+            <Field label="Dimensions">
+              <FormInput value={content.dimensions ?? ""} onChange={(v) => setContent({ dimensions: v })} />
+            </Field>
+          </div>
+          <Field label="Delivery information">
+            <FormTextarea value={content.deliveryInfo ?? ""} onChange={(v) => setContent({ deliveryInfo: v })} rows={2} />
+          </Field>
+        </ContentSection>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <ContentSection title="Benefits">
             <BulkField
@@ -556,6 +614,47 @@ export default function ProductForm({ product: initial, permissions }: Props) {
           <Field label="Success message" hint="Use {total} to insert the order total">
             <FormTextarea value={content.orderSuccessBody ?? ""} onChange={(v) => setContent({ orderSuccessBody: v })} />
           </Field>
+          <div className="rounded-lg bg-gray-50 p-3 space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={delivery.enabled}
+                onChange={(e) =>
+                  setContent({ deliveryPreference: { ...content.deliveryPreference, enabled: e.target.checked } })
+                }
+                className="w-4 h-4 accent-indigo-600"
+              />
+              <span className="text-sm text-gray-700 font-medium">Ask when the customer wants delivery</span>
+            </label>
+            {delivery.enabled && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Field label="Question">
+                  <FormInput
+                    value={content.deliveryPreference?.label ?? ""}
+                    onChange={(v) => setContent({ deliveryPreference: { ...content.deliveryPreference, label: v } })}
+                    placeholder={DELIVERY_DEFAULTS.label}
+                  />
+                </Field>
+                <Field label="First choice">
+                  <FormInput
+                    value={content.deliveryPreference?.asapLabel ?? ""}
+                    onChange={(v) => setContent({ deliveryPreference: { ...content.deliveryPreference, asapLabel: v } })}
+                    placeholder={DELIVERY_DEFAULTS.asapLabel}
+                  />
+                </Field>
+                <Field label="Date choice">
+                  <FormInput
+                    value={content.deliveryPreference?.dateLabel ?? ""}
+                    onChange={(v) => setContent({ deliveryPreference: { ...content.deliveryPreference, dateLabel: v } })}
+                    placeholder={DELIVERY_DEFAULTS.dateLabel}
+                  />
+                </Field>
+              </div>
+            )}
+            <p className="text-xs text-gray-400">
+              The date is saved as the customer&apos;s preferred date, not a guaranteed delivery date. Past dates are rejected.
+            </p>
+          </div>
           <Field label="Footer text">
             <FormInput value={content.footerText ?? ""} onChange={(v) => setContent({ footerText: v })} />
           </Field>
@@ -636,6 +735,48 @@ export default function ProductForm({ product: initial, permissions }: Props) {
             className="w-full sm:w-auto bg-indigo-600 text-white text-sm font-semibold px-6 py-3 sm:py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60"
           >
             {saving ? "Saving…" : "Save content"}
+          </button>
+        </div>
+      </div>
+    ),
+
+    Options: (
+      <div className="space-y-5">
+        <p className="text-sm text-gray-500">
+          The purchasing options customers choose from (sets, bundles or packages). Each order is for exactly one
+          option; the total is the option&apos;s unit price × quantity. Changes go live when you click Save and never
+          change existing orders.
+        </p>
+        {showOptionErrors && optionProblems.length > 0 && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+            <p className="text-sm font-semibold text-red-700">Nothing was saved — please fix:</p>
+            <ul className="mt-1 list-disc list-inside text-sm text-red-600">
+              {optionProblems.map((p) => <li key={p}>{p}</li>)}
+            </ul>
+          </div>
+        )}
+        <Field label="Heading above the options" hint="Shown in the order form.">
+          <FormInput
+            value={content.purchaseOptionsHeading ?? ""}
+            onChange={(v) => setContent({ purchaseOptionsHeading: v })}
+            placeholder="Choose your option"
+          />
+        </Field>
+        <PurchaseOptionsEditor
+          productId={product.id}
+          value={purchaseOptions}
+          onChange={(v) => setContent({ purchaseOptions: v })}
+        />
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-1">
+          {saved && <span className="text-sm text-green-600 font-medium text-center">Saved ✓</span>}
+          {error && <span className="text-sm text-red-500 text-center">{error}</span>}
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full sm:w-auto bg-indigo-600 text-white text-sm font-semibold px-6 py-3 sm:py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60"
+          >
+            {saving ? "Saving…" : "Save options"}
           </button>
         </div>
       </div>

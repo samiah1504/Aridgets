@@ -13,6 +13,8 @@ import type {
   MediaSlot,
   TemplateType,
   OptionDisplayType,
+  PurchaseOptionSnapshot,
+  DeliveryPreference,
 } from "./index";
 
 export type Database = {
@@ -311,6 +313,10 @@ export type Database = {
           last_contacted_at: string | null;
           is_test: boolean;
           tracking_session_id: string | null;
+          purchase_option_id: string | null;
+          purchase_option: PurchaseOptionSnapshot | null;
+          delivery_preference: DeliveryPreference | null;
+          delivery_date: string | null;
         };
         Insert: {
           id?: string;
@@ -344,6 +350,10 @@ export type Database = {
           buyer_confirmed?: boolean;
           is_test?: boolean;
           tracking_session_id?: string | null;
+          purchase_option_id?: string | null;
+          purchase_option?: PurchaseOptionSnapshot | null;
+          delivery_preference?: DeliveryPreference | null;
+          delivery_date?: string | null;
         };
         Update: {
           status?: LeadStatus;

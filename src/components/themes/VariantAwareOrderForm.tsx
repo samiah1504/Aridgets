@@ -1,12 +1,25 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { NIGERIAN_STATES } from "@/lib/constants/states";
 import { SERIOUS_BUYER_DEFAULTS } from "@/lib/config";
 import { getTrackingSession, beacon } from "@/components/MetaPixel";
 import { formatNGN } from "@/lib/utils/currency";
 import { isValidNGPhone } from "@/lib/utils/phone";
-import type { ProductOption, ProductVariant, SeriousBuyerNotice } from "@/types";
+import {
+  formatDeliveryDate,
+  latestDeliveryDate,
+  quantityBounds,
+  validateDeliveryDate,
+  type DeliverySettings,
+} from "@/lib/purchaseOptions";
+import type {
+  DeliveryPreference,
+  ProductOption,
+  ProductVariant,
+  PurchaseOption,
+  SeriousBuyerNotice,
+} from "@/types";
 
 export interface VariantAwareOrderFormProps {
   productId: string;
@@ -27,6 +40,12 @@ export interface VariantAwareOrderFormProps {
   variants: ProductVariant[];
   primaryColor: string;
   notice?: SeriousBuyerNotice;
+  /** Active purchasing options — when present the customer picks exactly one */
+  purchaseOptions?: PurchaseOption[];
+  purchaseOptionsHeading?: string;
+  delivery?: DeliverySettings;
+  /** Today's date in Nigeria (YYYY-MM-DD), computed on the server */
+  today?: string;
 }
 
 interface SuccessData {
@@ -81,7 +100,13 @@ export default function VariantAwareOrderForm({
   variants,
   primaryColor,
   notice,
+  purchaseOptions,
+  purchaseOptionsHeading,
+  delivery,
+  today,
 }: VariantAwareOrderFormProps) {
+  const optionsMode = !!purchaseOptions?.length;
+  const deliveryEnabled = !!delivery?.enabled && !!today;
   const noticeEnabled = notice?.enabled !== false;
   const noticeRequired = noticeEnabled && notice?.required !== false;
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
@@ -99,6 +124,12 @@ export default function VariantAwareOrderForm({
   const [fbp, setFbp] = useState<string | undefined>();
   const [fbc, setFbc] = useState<string | undefined>();
   const [testMode, setTestMode] = useState(false);
+  // A single option needs no choice — preselect it
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(
+    purchaseOptions?.length === 1 ? purchaseOptions[0].id : null
+  );
+  const [deliveryPref, setDeliveryPref] = useState<DeliveryPreference>("asap");
+  const [deliveryDate, setDeliveryDate] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -113,20 +144,36 @@ export default function VariantAwareOrderForm({
     };
   }, []);
 
-  const activeOptions = options.filter((o) => o.values.some((v) => v.active));
+  // Variations (colour/size) do not apply when purchasing options are in use
+  const activeOptions = useMemo(
+    () => (optionsMode ? [] : options.filter((o) => o.values.some((v) => v.active))),
+    [optionsMode, options]
+  );
   const matchedVariant = activeOptions.length > 0 ? findVariant(variants, selectedValues) : null;
 
   const hasAllRequired = activeOptions.every(
     (o) => !o.required || !!selectedValues[o.id]
   );
 
+  const selectedOption = optionsMode
+    ? purchaseOptions!.find((o) => o.id === selectedOptionId) ?? null
+    : null;
+
   const effectivePrice =
-    matchedVariant?.price_override ?? basePrice;
+    selectedOption?.price ?? matchedVariant?.price_override ?? basePrice;
   const effectiveCompareAt =
     matchedVariant?.compare_at_price_override ?? compareAtPrice ?? null;
   const total = effectivePrice * quantity;
 
   const outOfStock = isOutOfStock(matchedVariant);
+
+  function choosePurchaseOption(option: PurchaseOption) {
+    if (option.id === selectedOptionId) return;
+    setSelectedOptionId(option.id);
+    // Start each option at its own minimum quantity
+    setQuantity(quantityBounds(option).min);
+    setErrors((e) => ({ ...e, purchaseOption: "" }));
+  }
 
   function selectValue(optionId: string, valueId: string) {
     setSelectedValues((prev) => {
@@ -142,6 +189,11 @@ export default function VariantAwareOrderForm({
         e[`option_${o.id}`] = `Please choose a ${o.name.toLowerCase()}`;
       }
     });
+    if (optionsMode && !selectedOption) e.purchaseOption = "Please choose an option";
+    if (deliveryEnabled && deliveryPref === "date") {
+      const dateError = validateDeliveryDate(deliveryDate, today);
+      if (dateError) e.deliveryDate = dateError;
+    }
     if (!name.trim()) e.name = "Full name is required";
     if (!phone.trim()) e.phone = "Phone number is required";
     else if (!isValidNGPhone(phone)) e.phone = "Enter a valid Nigerian phone number";
@@ -151,13 +203,19 @@ export default function VariantAwareOrderForm({
       e.buyerConfirmed = "Please tick the confirmation box to place your order";
     }
     return e;
-  }, [activeOptions, selectedValues, name, phone, state, address, noticeRequired, buyerConfirmed]);
+  }, [activeOptions, selectedValues, optionsMode, selectedOption, deliveryEnabled, deliveryPref, deliveryDate, today, name, phone, state, address, noticeRequired, buyerConfirmed]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setApiError("");
     const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      if (errs.purchaseOption) {
+        document.getElementById("order-options")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
     setErrors({});
     setLoading(true);
 
@@ -191,7 +249,18 @@ export default function VariantAwareOrderForm({
           utm_medium: utmMedium,
           utm_campaign: utmCampaign,
           utm_content: utmContent,
-          variant_id: matchedVariant?.id ?? undefined,
+          variant_id: optionsMode ? undefined : matchedVariant?.id ?? undefined,
+          ...(selectedOption && {
+            purchase_option_id: selectedOption.id,
+            // Sent only so the server can reject a stale or tampered price —
+            // the server always charges the saved option price.
+            expected_unit_price: selectedOption.price,
+            expected_total: selectedOption.price * quantity,
+          }),
+          ...(deliveryEnabled && {
+            delivery_preference: deliveryPref,
+            delivery_date: deliveryPref === "date" ? deliveryDate : undefined,
+          }),
           selected_options: Object.keys(selectedOptions).length ? selectedOptions : undefined,
           buyer_confirmed: noticeEnabled ? buyerConfirmed : undefined,
         }),
@@ -269,6 +338,106 @@ export default function VariantAwareOrderForm({
           {testMode && (
             <div className="rounded-xl bg-orange-100 border border-orange-300 px-4 py-2.5 text-xs font-bold text-orange-800 text-center">
               🧪 TEST MODE — this order will be tagged as a test lead
+            </div>
+          )}
+
+          {/* Purchasing options — exactly one per order */}
+          {optionsMode && (
+            <div id="order-options">
+              <p className="text-sm font-semibold mb-2" id="order-options-label">
+                {purchaseOptionsHeading || "Choose your option"} <span className="text-red-500">*</span>
+              </p>
+              <div role="radiogroup" aria-labelledby="order-options-label" className="space-y-3">
+                {purchaseOptions!.map((option) => {
+                  const selected = option.id === selectedOptionId;
+                  const bounds = quantityBounds(option);
+                  return (
+                    <div
+                      key={option.id}
+                      className={`rounded-xl border-2 transition ${
+                        selected ? "bg-gray-50" : errors.purchaseOption ? "border-red-300" : "border-gray-200"
+                      }`}
+                      style={selected ? { borderColor: primaryColor } : undefined}
+                    >
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => choosePurchaseOption(option)}
+                        className="w-full text-left flex gap-3 p-3"
+                      >
+                        <span
+                          className={`mt-1 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                            selected ? "" : "border-gray-300"
+                          }`}
+                          style={selected ? { borderColor: primaryColor } : undefined}
+                          aria-hidden
+                        >
+                          {selected && (
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
+                          )}
+                        </span>
+                        {option.imageUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={option.imageUrl}
+                            alt=""
+                            loading="lazy"
+                            className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shrink-0 bg-gray-100"
+                          />
+                        )}
+                        <span className="flex-1 min-w-0">
+                          <span className="block font-bold text-gray-900 leading-snug">{option.name}</span>
+                          {option.description && (
+                            <span className="block text-xs text-gray-500 mt-0.5 leading-relaxed">
+                              {option.description}
+                            </span>
+                          )}
+                          {option.includes && option.includes.length > 0 && (
+                            <span className="block text-xs text-gray-600 mt-1.5 space-y-0.5">
+                              {option.includes.map((item, i) => (
+                                <span key={i} className="flex gap-1.5">
+                                  <span style={{ color: primaryColor }} aria-hidden>✓</span>
+                                  <span>{item}</span>
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                          <span className="block text-lg font-extrabold mt-1.5" style={{ color: primaryColor }}>
+                            {formatNGN(option.price)}
+                          </span>
+                        </span>
+                      </button>
+                      {selected && (
+                        <div className="flex items-center justify-between gap-3 border-t border-gray-200 px-3 py-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-semibold text-gray-700">Qty</span>
+                            <button
+                              type="button"
+                              aria-label="Decrease quantity"
+                              disabled={quantity <= bounds.min}
+                              onClick={() => setQuantity((q) => Math.max(bounds.min, q - 1))}
+                              className="w-9 h-9 rounded-full border border-gray-300 bg-white text-lg font-bold flex items-center justify-center active:bg-gray-100 disabled:opacity-40 transition"
+                            >−</button>
+                            <span className="text-lg font-bold w-6 text-center" aria-live="polite">{quantity}</span>
+                            <button
+                              type="button"
+                              aria-label="Increase quantity"
+                              disabled={quantity >= bounds.max}
+                              onClick={() => setQuantity((q) => Math.min(bounds.max, q + 1))}
+                              className="w-9 h-9 rounded-full border border-gray-300 bg-white text-lg font-bold flex items-center justify-center active:bg-gray-100 disabled:opacity-40 transition"
+                            >+</button>
+                          </div>
+                          <span className="text-sm font-bold text-gray-900" aria-live="polite">
+                            {formatNGN(option.price * quantity)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {errors.purchaseOption && <p className="text-xs text-red-500 mt-2">{errors.purchaseOption}</p>}
             </div>
           )}
 
@@ -385,7 +554,7 @@ export default function VariantAwareOrderForm({
           </div>
 
           {/* Variant selectors */}
-          {activeOptions.map((option) => {
+          {!optionsMode && activeOptions.map((option) => {
             const activeVals = option.values.filter((v) => v.active);
             const err = errors[`option_${option.id}`];
             return (
@@ -465,7 +634,7 @@ export default function VariantAwareOrderForm({
           )}
 
           {/* Price display (updates with variant) */}
-          {activeOptions.length > 0 && (
+          {!optionsMode && activeOptions.length > 0 && (
             <div className="flex items-baseline gap-2">
               <span className="text-xl font-bold text-gray-900">{formatNGN(effectivePrice)}</span>
               {effectiveCompareAt && effectiveCompareAt > effectivePrice && (
@@ -477,6 +646,103 @@ export default function VariantAwareOrderForm({
             </div>
           )}
 
+          {/* Delivery preference */}
+          {deliveryEnabled && (
+            <fieldset>
+              <legend className="block text-sm font-semibold mb-2">
+                {delivery!.label} <span className="text-red-500">*</span>
+              </legend>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {([
+                  ["asap", delivery!.asapLabel],
+                  ["date", delivery!.dateLabel],
+                ] as const).map(([value, label]) => (
+                  <label
+                    key={value}
+                    className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium cursor-pointer transition ${
+                      deliveryPref === value ? "bg-gray-50" : "border-gray-200"
+                    }`}
+                    style={deliveryPref === value ? { borderColor: primaryColor } : undefined}
+                  >
+                    <input
+                      type="radio"
+                      name="delivery_preference"
+                      value={value}
+                      checked={deliveryPref === value}
+                      onChange={() => {
+                        setDeliveryPref(value);
+                        setErrors((e) => ({ ...e, deliveryDate: "" }));
+                      }}
+                      className="w-4 h-4 shrink-0"
+                      style={{ accentColor: primaryColor }}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              {deliveryPref === "date" && (
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="of-delivery-date">
+                    Preferred delivery date
+                  </label>
+                  <input
+                    id="of-delivery-date"
+                    type="date"
+                    required
+                    min={today}
+                    max={latestDeliveryDate(today!)}
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    className={`w-full border rounded-xl px-4 py-3 text-sm bg-white outline-none focus:ring-2 transition ${
+                      errors.deliveryDate ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
+                    }`}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    This is your preferred date — we will confirm the delivery date when we call you.
+                  </p>
+                  {errors.deliveryDate && <p className="text-xs text-red-500 mt-1">{errors.deliveryDate}</p>}
+                </div>
+              )}
+            </fieldset>
+          )}
+
+          {optionsMode ? (
+            <div className="bg-gray-50 rounded-xl px-4 py-4 text-sm" aria-live="polite">
+              <p className="font-semibold text-gray-900 mb-2">Order summary</p>
+              {selectedOption ? (
+                <dl className="space-y-1.5">
+                  {([
+                    ["Product", productName],
+                    ["Option", selectedOption.name],
+                    ["Unit price", formatNGN(selectedOption.price)],
+                    ["Quantity", String(quantity)],
+                    ...(deliveryEnabled
+                      ? [[
+                          "Delivery",
+                          deliveryPref === "date"
+                            ? deliveryDate && !validateDeliveryDate(deliveryDate, today)
+                              ? `Preferred date: ${formatDeliveryDate(deliveryDate)}`
+                              : "Preferred date: not chosen yet"
+                            : delivery!.asapLabel,
+                        ] as [string, string]]
+                      : []),
+                  ] as [string, string][]).map(([k, v]) => (
+                    <div key={k} className="flex justify-between gap-4">
+                      <dt className="text-gray-500 shrink-0">{k}</dt>
+                      <dd className="font-medium text-gray-900 text-right">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p className="text-gray-500">Choose an option above to see your total.</p>
+              )}
+              <div className="flex justify-between font-bold text-base pt-2 border-t border-gray-200 mt-3">
+                <span>Total (Pay on delivery)</span>
+                <span style={{ color: primaryColor }}>{selectedOption ? formatNGN(total) : "—"}</span>
+              </div>
+            </div>
+          ) : (
+          <>
           <div>
             <label className="block text-sm font-semibold mb-1">Quantity</label>
             <div className="flex items-center gap-4">
@@ -498,6 +764,8 @@ export default function VariantAwareOrderForm({
               <span style={{ color: primaryColor }}>{formatNGN(total)}</span>
             </div>
           </div>
+          </>
+          )}
 
           {apiError && (
             <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
@@ -507,12 +775,12 @@ export default function VariantAwareOrderForm({
 
           <button
             type="submit"
-            disabled={loading || outOfStock || (activeOptions.length > 0 && !hasAllRequired)}
+            disabled={loading || (!optionsMode && (outOfStock || (activeOptions.length > 0 && !hasAllRequired)))}
             className="w-full text-white font-extrabold text-lg py-4 rounded-2xl shadow-md active:scale-95 transition-all disabled:opacity-60"
             style={{ backgroundColor: primaryColor }}
           >
             {loading ? "Placing order…"
-              : outOfStock ? "Out of Stock"
+              : !optionsMode && outOfStock ? "Out of Stock"
               : (ctaText ?? "Order Now — Pay on Delivery")}
           </button>
 
