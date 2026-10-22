@@ -14,7 +14,7 @@ import {
   themeCssVars,
   type ThemeColourField,
 } from "@/lib/theme";
-import type { ProductContent, ProductTheme } from "@/types";
+import type { ProductContent, ProductTheme, SectionConfig } from "@/types";
 
 // Theme tab: presets are shortcuts that fill the four colour fields; every
 // value stays editable and the preview updates before anything is saved.
@@ -25,6 +25,7 @@ interface Props {
   productName: string;
   price: number;
   content: ProductContent;
+  sections: SectionConfig[];
   templateType: string | null;
 }
 
@@ -122,7 +123,7 @@ function Segmented<T extends string>({
   );
 }
 
-export default function ThemeEditor({ theme: raw, onChange, productName, price, content, templateType }: Props) {
+export default function ThemeEditor({ theme: raw, onChange, productName, price, content, sections, templateType }: Props) {
   const theme = resolveTheme(raw);
   const exact = matchingPreset(theme);
   const basedOn = THEME_PRESETS.find((p) => p.id === theme.preset);
@@ -275,6 +276,7 @@ export default function ThemeEditor({ theme: raw, onChange, productName, price, 
         productName={productName}
         price={price}
         content={content}
+        sections={sections}
         templateType={templateType}
       />
     </div>

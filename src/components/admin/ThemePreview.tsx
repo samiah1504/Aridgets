@@ -8,8 +8,9 @@ import FAQ from "@/components/sections/FAQ";
 import VariantAwareOrderForm from "@/components/themes/VariantAwareOrderForm";
 import { activePurchaseOptions, lowestPrice, resolveDeliverySettings, todayInLagos } from "@/lib/purchaseOptions";
 import { themeCssVars, type ResolvedTheme } from "@/lib/theme";
+import { displaySections } from "@/lib/sections";
 import { fontStack, fontVariablesClass } from "@/lib/fonts";
-import type { ProductContent, PurchaseOption } from "@/types";
+import type { ProductContent, PurchaseOption, SectionConfig } from "@/types";
 
 // Live theme preview built from the real sales page components, so what you
 // see here is what the published page renders. Uses the page's own content
@@ -31,10 +32,11 @@ interface Props {
   productName: string;
   price: number;
   content: ProductContent;
+  sections: SectionConfig[];
   templateType: string | null;
 }
 
-export default function ThemePreview({ theme, productName, price, content, templateType }: Props) {
+export default function ThemePreview({ theme, productName, price, content, sections, templateType }: Props) {
   const [mode, setMode] = useState<keyof typeof WIDTH>("mobile");
   const outer = useRef<HTMLDivElement>(null);
   const inner = useRef<HTMLDivElement>(null);
@@ -62,6 +64,44 @@ export default function ThemePreview({ theme, productName, price, content, templ
   const faq = content.faq?.length ? content.faq.slice(0, 3) : SAMPLE_FAQ;
   const delivery = resolveDeliverySettings(content, templateType);
   const fromPrice = lowestPrice(options) ?? price;
+
+  // The parts of the page the preview shows, rendered in the page's own order
+  const previewSections: Record<string, React.ReactNode> = {
+    announcementBar: (
+      <AnnouncementBar text={content.announcementBar || "Free delivery nationwide · Pay on delivery"} />
+    ),
+    hero: (
+      <Hero
+        eyebrow={content.eyebrow || "New arrival"}
+        headline={content.headline || productName}
+        subhead={content.subhead || "A short sentence that tells customers why they will love this product."}
+        starRating={content.starRating ?? 4.8}
+        ctaText={content.ctaText}
+        trustRow={content.trustRow?.length ? content.trustRow.slice(0, 3) : ["Pay on Delivery", "Quality Guaranteed"]}
+        price={fromPrice}
+        pricePrefix={new Set(options.map((o) => o.price)).size > 1 ? "From" : undefined}
+      />
+    ),
+    socialProof: content.testimonials?.length ? <SocialProof testimonials={content.testimonials.slice(0, 2)} /> : null,
+    faq: <FAQ items={faq} />,
+    orderForm: (
+      <VariantAwareOrderForm
+        preview
+        productId="preview"
+        productName={productName}
+        basePrice={fromPrice}
+        options={[]}
+        variants={[]}
+        purchaseOptions={options}
+        purchaseOptionsHeading={content.purchaseOptionsHeading}
+        delivery={delivery}
+        today={todayInLagos()}
+        notice={content.seriousBuyer}
+        title={content.orderFormTitle}
+        ctaText={content.ctaText}
+      />
+    ),
+  };
 
   return (
     <div>
@@ -105,34 +145,10 @@ export default function ThemePreview({ theme, productName, price, content, templ
             "--preview-scale": String(scale),
           } as React.CSSProperties}
         >
-          <AnnouncementBar text={content.announcementBar || "Free delivery nationwide · Pay on delivery"} />
-          <Hero
-            eyebrow={content.eyebrow || "New arrival"}
-            headline={content.headline || productName}
-            subhead={content.subhead || "A short sentence that tells customers why they will love this product."}
-            starRating={content.starRating ?? 4.8}
-            ctaText={content.ctaText}
-            trustRow={content.trustRow?.length ? content.trustRow.slice(0, 3) : ["Pay on Delivery", "Quality Guaranteed"]}
-            price={fromPrice}
-            pricePrefix={new Set(options.map((o) => o.price)).size > 1 ? "From" : undefined}
-          />
-          <VariantAwareOrderForm
-            preview
-            productId="preview"
-            productName={productName}
-            basePrice={fromPrice}
-            options={[]}
-            variants={[]}
-            purchaseOptions={options}
-            purchaseOptionsHeading={content.purchaseOptionsHeading}
-            delivery={delivery}
-            today={todayInLagos()}
-            notice={content.seriousBuyer}
-            title={content.orderFormTitle}
-            ctaText={content.ctaText}
-          />
-          {content.testimonials?.length ? <SocialProof testimonials={content.testimonials.slice(0, 2)} /> : null}
-          <FAQ items={faq} />
+          {displaySections(sections, templateType).map((key) => {
+            const section = previewSections[key];
+            return section ? <div key={key}>{section}</div> : null;
+          })}
           <footer className="text-center py-8 text-xs opacity-50 px-4">{content.footerText || productName}</footer>
         </div>
       </div>

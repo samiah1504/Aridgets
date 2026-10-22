@@ -1,5 +1,6 @@
 import { APP_NAME } from "@/lib/config";
 import { activePurchaseOptions, lowestPrice } from "@/lib/purchaseOptions";
+import { displaySections } from "@/lib/sections";
 import AnnouncementBar from "@/components/sections/AnnouncementBar";
 import Hero from "@/components/sections/Hero";
 import Problem from "@/components/sections/Problem";
@@ -88,11 +89,9 @@ export default function OptionsBundlesTheme({
 
   return (
     <>
-      {sections
-        .filter((s) => s.enabled)
-        .map((s) =>
-          sectionMap[s.key] ? <div key={s.key}>{sectionMap[s.key]}</div> : null
-        )}
+      {displaySections(sections, "options_bundles").map((key) =>
+        sectionMap[key] ? <div key={key}>{sectionMap[key]}</div> : null
+      )}
       <footer className="text-center py-8 text-xs opacity-50 px-4 space-y-1">
         {content.footerText && <p>{content.footerText}</p>}
         <p>Powered by {APP_NAME}</p>
