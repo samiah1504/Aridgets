@@ -10,6 +10,7 @@ import VariationsEditor from "./VariationsEditor";
 import MediaManager from "./MediaManager";
 import BulkField from "./BulkField";
 import PurchaseOptionsEditor from "./PurchaseOptionsEditor";
+import ThemeEditor from "./ThemeEditor";
 import {
   DELIVERY_DEFAULTS,
   cleanPurchaseOption,
@@ -47,8 +48,6 @@ const SECTION_LABELS: Record<string, string> = {
   faq: "FAQ",
   orderForm: "Order Form",
 };
-
-const FONTS = ["Inter", "Poppins", "Lato", "Montserrat", "Nunito", "Raleway"];
 
 const TABS = ["Basic", "Design", "Theme", "Content", "Options", "Sections", "Tracking", "Media", "Variations"] as const;
 type Tab = (typeof TABS)[number];
@@ -116,28 +115,6 @@ function FormTextarea({
       placeholder={placeholder}
       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition resize-none"
     />
-  );
-}
-
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-9 h-9 rounded border border-gray-200 cursor-pointer p-0.5"
-        />
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
-        />
-      </div>
-    </div>
   );
 }
 
@@ -446,29 +423,34 @@ export default function ProductForm({ product: initial, permissions }: Props) {
     ),
 
     Theme: (
-      <div className="space-y-5">
-        <p className="text-sm text-gray-500">These colours style your sales page.</p>
-        <div className="grid grid-cols-2 gap-4">
-          <ColorField label="Primary colour" value={theme.primary} onChange={(v) => setTheme({ primary: v })} />
-          <ColorField label="Accent colour" value={theme.accent} onChange={(v) => setTheme({ accent: v })} />
-          <ColorField label="Background" value={theme.background} onChange={(v) => setTheme({ background: v })} />
-          <ColorField label="Text colour" value={theme.text} onChange={(v) => setTheme({ text: v })} />
-        </div>
-        <Field label="Font">
-          <select
-            value={theme.font}
-            onChange={(e) => setTheme({ font: e.target.value })}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+      <div>
+        <ThemeEditor
+          theme={theme}
+          onChange={setTheme}
+          productName={product.name}
+          price={product.price}
+          content={content}
+          templateType={product.template_type}
+        />
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-5">
+          {saved && <span className="text-sm text-green-600 font-medium text-center">Saved ✓</span>}
+          {error && <span className="text-sm text-red-500 text-center">{error}</span>}
+          <a
+            href={`/p/${product.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-center text-sm text-gray-500 hover:text-gray-800 py-2"
           >
-            {FONTS.map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
-        </Field>
-        <div
-          className="rounded-xl border-2 p-4 text-sm font-medium"
-          style={{ borderColor: theme.primary, backgroundColor: theme.background, color: theme.text }}
-        >
-          Preview — <span style={{ color: theme.primary }}>primary</span> and{" "}
-          <span style={{ color: theme.accent }}>accent</span> colours on this background.
+            Open published page ↗
+          </a>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full sm:w-auto bg-indigo-600 text-white text-sm font-semibold px-6 py-3 sm:py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60"
+          >
+            {saving ? "Saving…" : "Save theme"}
+          </button>
         </div>
       </div>
     ),

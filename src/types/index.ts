@@ -79,12 +79,21 @@ export type MediaKind = "image" | "video";
 export type MediaProvider = "upload" | "youtube" | "vimeo" | "mp4";
 export type MediaSlot = "hero" | "gallery";
 
+export type ButtonShape = "square" | "rounded" | "pill";
+export type CardStyle = "border" | "shadow";
+export type SectionSpacing = "compact" | "comfortable" | "spacious";
+
 export interface ProductTheme {
   primary: string;
   accent: string;
   background: string;
   text: string;
   font: string;
+  // Optional (older pages don't have them; see resolveTheme for defaults)
+  preset?: string; // preset last applied; colours may since have been customised
+  buttonShape?: ButtonShape;
+  cardStyle?: CardStyle;
+  spacing?: SectionSpacing;
 }
 
 export interface SectionConfig {

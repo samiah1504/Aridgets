@@ -6,7 +6,7 @@ interface FAQItem {
 export default function FAQ({ items }: { items?: FAQItem[] }) {
   if (!items?.length) return null;
   return (
-    <section className="px-4 py-10">
+    <section className="px-4 sp-section">
       <div className="max-w-lg mx-auto">
         <h2 className="text-2xl font-bold mb-6 text-center">
           Frequently Asked Questions
@@ -15,15 +15,15 @@ export default function FAQ({ items }: { items?: FAQItem[] }) {
           {items.map((item, i) => (
             <details
               key={i}
-              className="group border border-gray-200 rounded-xl overflow-hidden"
+              className="group sp-card overflow-hidden"
             >
               <summary className="flex items-center justify-between gap-3 px-4 py-4 font-semibold text-sm cursor-pointer select-none list-none">
                 {item.question}
-                <span className="flex-shrink-0 text-gray-400 group-open:rotate-180 transition-transform">
+                <span className="flex-shrink-0 sp-subtle group-open:rotate-180 transition-transform">
                   ▾
                 </span>
               </summary>
-              <div className="px-4 pb-4 text-sm text-gray-600 leading-relaxed">
+              <div className="px-4 pb-4 text-sm sp-muted leading-relaxed">
                 {item.answer}
               </div>
             </details>

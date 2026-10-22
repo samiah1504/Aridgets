@@ -39,7 +39,8 @@ export interface VariantAwareOrderFormProps {
   utmContent?: string;
   options: ProductOption[];
   variants: ProductVariant[];
-  primaryColor: string;
+  /** @deprecated Colours come from the page theme tokens (sp-* classes) */
+  primaryColor?: string;
   notice?: SeriousBuyerNotice;
   /** Active purchasing options — when present the customer picks exactly one */
   purchaseOptions?: PurchaseOption[];
@@ -47,6 +48,8 @@ export interface VariantAwareOrderFormProps {
   delivery?: DeliverySettings;
   /** Today's date in Nigeria (YYYY-MM-DD), computed on the server */
   today?: string;
+  /** Admin theme preview: fully interactive, but never submits an order */
+  preview?: boolean;
 }
 
 interface SuccessData {
@@ -99,12 +102,12 @@ export default function VariantAwareOrderForm({
   utmContent,
   options,
   variants,
-  primaryColor,
   notice,
   purchaseOptions,
   purchaseOptionsHeading,
   delivery,
   today,
+  preview,
 }: VariantAwareOrderFormProps) {
   const optionsMode = !!purchaseOptions?.length;
   const deliveryEnabled = !!delivery?.enabled && !!today;
@@ -218,6 +221,10 @@ export default function VariantAwareOrderForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setApiError("");
+    if (preview) {
+      setApiError("This is a preview — orders can't be placed from here.");
+      return;
+    }
     const errs = validate();
     if (Object.keys(errs).length) {
       setErrors(errs);
@@ -321,8 +328,8 @@ export default function VariantAwareOrderForm({
     const body = (successBody ?? "Thank you! We will call you to confirm your order.")
       .replace("{total}", formatNGN(success.total));
     return (
-      <section id="order" className="px-4 py-10 max-w-lg mx-auto">
-        <div className="rounded-2xl p-8 text-center text-white" style={{ backgroundColor: primaryColor }}>
+      <section id="order" className="px-4 sp-section max-w-lg mx-auto">
+        <div className="sp-on-primary sp-rounded p-8 text-center">
           <div className="text-5xl mb-4">🎉</div>
           <h2 className="text-2xl font-extrabold mb-3">{successHeadline ?? "Order Received!"}</h2>
           <p className="text-base opacity-90 leading-relaxed mb-4">{body}</p>
@@ -335,18 +342,18 @@ export default function VariantAwareOrderForm({
   }
 
   return (
-    <section id="order" className="px-4 py-10 max-w-lg mx-auto">
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-        <div className="px-6 py-5 text-white" style={{ backgroundColor: primaryColor }}>
+    <section id="order" className="px-4 sp-section max-w-lg mx-auto">
+      <div className="sp-card overflow-hidden">
+        <div className="px-6 py-5 sp-on-primary">
           <h2 className="text-xl font-extrabold">
             {title ?? `Order ${productName} — Pay on Delivery`}
           </h2>
           <p className="text-sm opacity-80 mt-1">Fill the form below. We call to confirm before delivery.</p>
         </div>
 
-        <form onSubmit={handleSubmit} noValidate className="px-6 py-6 space-y-5">
+        <form onSubmit={handleSubmit} noValidate className="px-4 sm:px-6 py-6 space-y-5">
           {testMode && (
-            <div className="rounded-xl bg-orange-100 border border-orange-300 px-4 py-2.5 text-xs font-bold text-orange-800 text-center">
+            <div className="sp-rounded bg-orange-100 border border-orange-300 px-4 py-2.5 text-xs font-bold text-orange-800 text-center">
               🧪 TEST MODE — this order will be tagged as a test lead
             </div>
           )}
@@ -364,10 +371,9 @@ export default function VariantAwareOrderForm({
                   return (
                     <div
                       key={option.id}
-                      className={`rounded-xl border-2 transition ${
-                        selected ? "bg-gray-50" : errors.purchaseOption ? "border-red-300" : "border-gray-200"
-                      }`}
-                      style={selected ? { borderColor: primaryColor } : undefined}
+                      className="sp-choice overflow-hidden"
+                      data-selected={selected}
+                      data-invalid={!!errors.purchaseOption}
                     >
                       <button
                         type="button"
@@ -378,14 +384,11 @@ export default function VariantAwareOrderForm({
                       >
                         <span
                           className={`mt-1 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${
-                            selected ? "" : "border-gray-300"
+                            selected ? "border-[var(--product-primary)]" : "sp-border"
                           }`}
-                          style={selected ? { borderColor: primaryColor } : undefined}
                           aria-hidden
                         >
-                          {selected && (
-                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
-                          )}
+                          {selected && <span className="w-2.5 h-2.5 rounded-full bg-[var(--product-primary)]" />}
                         </span>
                         {option.imageUrl && (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -393,41 +396,41 @@ export default function VariantAwareOrderForm({
                             src={option.imageUrl}
                             alt=""
                             loading="lazy"
-                            className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover shrink-0 bg-gray-100"
+                            className="w-16 h-16 sm:w-20 sm:h-20 sp-rounded object-cover shrink-0 sp-surface"
                           />
                         )}
                         <span className="flex-1 min-w-0">
-                          <span className="block font-bold text-gray-900 leading-snug">{option.name}</span>
+                          <span className="block font-bold leading-snug">{option.name}</span>
                           {option.description && (
-                            <span className="block text-xs text-gray-500 mt-0.5 leading-relaxed">
+                            <span className="block text-xs sp-muted mt-0.5 leading-relaxed">
                               {option.description}
                             </span>
                           )}
                           {option.includes && option.includes.length > 0 && (
-                            <span className="block text-xs text-gray-600 mt-1.5 space-y-0.5">
+                            <span className="block text-xs sp-muted mt-1.5 space-y-0.5">
                               {option.includes.map((item, i) => (
                                 <span key={i} className="flex gap-1.5">
-                                  <span style={{ color: primaryColor }} aria-hidden>✓</span>
+                                  <span className="sp-primary-text" aria-hidden>✓</span>
                                   <span>{item}</span>
                                 </span>
                               ))}
                             </span>
                           )}
-                          <span className="block text-lg font-extrabold mt-1.5" style={{ color: primaryColor }}>
+                          <span className="block text-lg font-extrabold mt-1.5 sp-primary-text">
                             {formatNGN(option.price)}
                           </span>
                         </span>
                       </button>
                       {selected && (
-                        <div className="flex items-center justify-between gap-3 border-t border-gray-200 px-3 py-3">
+                        <div className="flex items-center justify-between gap-3 border-t sp-border px-3 py-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-gray-700">Qty</span>
+                            <span className="text-sm font-semibold">Qty</span>
                             <button
                               type="button"
                               aria-label="Decrease quantity"
                               disabled={quantity <= MIN_ORDER_QTY}
                               onClick={() => changeOptionQuantity(quantity - 1, maxQty)}
-                              className="w-9 h-9 rounded-full border border-gray-300 bg-white text-lg font-bold flex items-center justify-center active:bg-gray-100 disabled:opacity-40 transition"
+                              className="sp-btn-outline w-9 h-9 text-lg font-bold flex items-center justify-center transition"
                             >−</button>
                             <input
                               type="number"
@@ -442,17 +445,17 @@ export default function VariantAwareOrderForm({
                                 if (Number.isInteger(n) && n >= MIN_ORDER_QTY) changeOptionQuantity(n, maxQty);
                               }}
                               onBlur={() => setQtyText(String(quantity))}
-                              className="w-16 h-9 rounded-lg border border-gray-300 bg-white text-center text-base font-bold outline-none focus:ring-2 focus:ring-gray-300"
+                              className="sp-input w-16 h-9 text-center text-base font-bold"
                             />
                             <button
                               type="button"
                               aria-label="Increase quantity"
                               disabled={quantity >= maxQty}
                               onClick={() => changeOptionQuantity(quantity + 1, maxQty)}
-                              className="w-9 h-9 rounded-full border border-gray-300 bg-white text-lg font-bold flex items-center justify-center active:bg-gray-100 disabled:opacity-40 transition"
+                              className="sp-btn-outline w-9 h-9 text-lg font-bold flex items-center justify-center transition"
                             >+</button>
                           </div>
-                          <span className="text-sm font-bold text-gray-900" aria-live="polite">
+                          <span className="text-sm font-bold" aria-live="polite">
                             {formatNGN(option.price * quantity)}
                           </span>
                         </div>
@@ -468,7 +471,7 @@ export default function VariantAwareOrderForm({
           {/* Serious Buyers notice */}
           {noticeEnabled && (
             <div
-              className={`rounded-xl border px-4 py-4 ${
+              className={`sp-rounded border px-4 py-4 ${
                 errors.buyerConfirmed
                   ? "border-red-300 bg-red-50"
                   : "border-amber-200 bg-amber-50"
@@ -509,9 +512,8 @@ export default function VariantAwareOrderForm({
               autoCorrect="off" autoCapitalize="words" spellCheck={false}
               value={name} onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Amaka Johnson"
-              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 transition ${
-                errors.name ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
-              }`}
+              aria-invalid={!!errors.name}
+              className="sp-input w-full px-4 py-3 text-base sm:text-sm"
             />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
           </div>
@@ -524,9 +526,8 @@ export default function VariantAwareOrderForm({
               id="of-phone" type="tel" autoComplete="tel" inputMode="tel"
               value={phone} onChange={(e) => setPhone(e.target.value)}
               placeholder="e.g. 08012345678"
-              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 transition ${
-                errors.phone ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
-              }`}
+              aria-invalid={!!errors.phone}
+              className="sp-input w-full px-4 py-3 text-base sm:text-sm"
             />
             {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
           </div>
@@ -538,9 +539,8 @@ export default function VariantAwareOrderForm({
             <select
               id="of-state" value={state}
               onChange={(e) => setState(e.target.value)}
-              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 bg-white transition ${
-                errors.state ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
-              }`}
+              aria-invalid={!!errors.state}
+              className="sp-input w-full px-4 py-3 text-base sm:text-sm"
             >
               <option value="">— Select State —</option>
               {NIGERIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -550,14 +550,14 @@ export default function VariantAwareOrderForm({
 
           <div>
             <label className="block text-sm font-semibold mb-1" htmlFor="of-city">
-              City / Town <span className="text-gray-400 font-normal">(optional)</span>
+              City / Town <span className="sp-subtle font-normal">(optional)</span>
             </label>
             <input
               id="of-city" type="text" autoComplete="address-level2"
               autoCorrect="off" autoCapitalize="words" spellCheck={false}
               value={city} onChange={(e) => setCity(e.target.value)}
               placeholder="e.g. Ikeja"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500 transition"
+              className="sp-input w-full px-4 py-3 text-base sm:text-sm"
             />
           </div>
 
@@ -570,9 +570,8 @@ export default function VariantAwareOrderForm({
               autoCorrect="off" autoCapitalize="sentences" spellCheck={false}
               value={address} onChange={(e) => setAddress(e.target.value)}
               placeholder="House number, street, nearest landmark"
-              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 transition resize-none ${
-                errors.address ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
-              }`}
+              aria-invalid={!!errors.address}
+              className="sp-input w-full px-4 py-3 text-base sm:text-sm resize-none"
             />
             {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address}</p>}
           </div>
@@ -601,11 +600,11 @@ export default function VariantAwareOrderForm({
                         >
                           <span
                             className={`w-9 h-9 rounded-full border-2 transition-transform ${
-                              selected ? "border-gray-900 scale-110" : "border-gray-200 hover:border-gray-400"
+                              selected ? "border-[var(--product-text)] scale-110" : "sp-border"
                             }`}
                             style={{ backgroundColor: val.colour_hex ?? "#ccc" }}
                           />
-                          <span className="text-xs text-gray-500">{val.value}</span>
+                          <span className="text-xs sp-muted">{val.value}</span>
                         </button>
                       );
                     })}
@@ -614,9 +613,8 @@ export default function VariantAwareOrderForm({
                   <select
                     value={selectedValues[option.id] ?? ""}
                     onChange={(e) => selectValue(option.id, e.target.value)}
-                    className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 bg-white transition ${
-                      err ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
-                    }`}
+                    aria-invalid={!!err}
+                    className="sp-input w-full px-4 py-3 text-base sm:text-sm"
                   >
                     <option value="">— Choose {option.name} —</option>
                     {activeVals.map((val) => (
@@ -632,10 +630,9 @@ export default function VariantAwareOrderForm({
                           key={val.id}
                           type="button"
                           onClick={() => selectValue(option.id, val.id)}
-                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                            selected
-                              ? "border-gray-900 bg-gray-900 text-white"
-                              : "border-gray-200 hover:border-gray-400 text-gray-700"
+                          aria-pressed={selected}
+                          className={`px-4 py-2 text-sm font-medium transition ${
+                            selected ? "sp-btn" : "sp-btn-outline"
                           }`}
                         >
                           {val.value}
@@ -651,7 +648,7 @@ export default function VariantAwareOrderForm({
 
           {/* Show variant image if available */}
           {matchedVariant?.image_url && (
-            <div className="rounded-xl overflow-hidden border border-gray-100">
+            <div className="sp-rounded overflow-hidden border sp-border">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={matchedVariant.image_url} alt="" className="w-full object-cover max-h-48" />
             </div>
@@ -660,9 +657,9 @@ export default function VariantAwareOrderForm({
           {/* Price display (updates with variant) */}
           {!optionsMode && activeOptions.length > 0 && (
             <div className="flex items-baseline gap-2">
-              <span className="text-xl font-bold text-gray-900">{formatNGN(effectivePrice)}</span>
+              <span className="text-xl font-bold">{formatNGN(effectivePrice)}</span>
               {effectiveCompareAt && effectiveCompareAt > effectivePrice && (
-                <span className="text-base text-gray-400 line-through">{formatNGN(effectiveCompareAt)}</span>
+                <span className="text-base sp-subtle line-through">{formatNGN(effectiveCompareAt)}</span>
               )}
               {outOfStock && (
                 <span className="text-sm text-red-500 font-medium">Out of stock</span>
@@ -683,10 +680,8 @@ export default function VariantAwareOrderForm({
                 ] as const).map(([value, label]) => (
                   <label
                     key={value}
-                    className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium cursor-pointer transition ${
-                      deliveryPref === value ? "bg-gray-50" : "border-gray-200"
-                    }`}
-                    style={deliveryPref === value ? { borderColor: primaryColor } : undefined}
+                    className="sp-choice flex items-center gap-2.5 px-4 py-3 text-sm font-medium cursor-pointer"
+                    data-selected={deliveryPref === value}
                   >
                     <input
                       type="radio"
@@ -697,8 +692,7 @@ export default function VariantAwareOrderForm({
                         setDeliveryPref(value);
                         setErrors((e) => ({ ...e, deliveryDate: "" }));
                       }}
-                      className="w-4 h-4 shrink-0"
-                      style={{ accentColor: primaryColor }}
+                      className="w-4 h-4 shrink-0 accent-[var(--product-primary)]"
                     />
                     {label}
                   </label>
@@ -706,7 +700,7 @@ export default function VariantAwareOrderForm({
               </div>
               {deliveryPref === "date" && (
                 <div className="mt-3">
-                  <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="of-delivery-date">
+                  <label className="block text-xs font-medium sp-muted mb-1" htmlFor="of-delivery-date">
                     Preferred delivery date
                   </label>
                   <input
@@ -717,11 +711,10 @@ export default function VariantAwareOrderForm({
                     max={latestDeliveryDate(today!)}
                     value={deliveryDate}
                     onChange={(e) => setDeliveryDate(e.target.value)}
-                    className={`w-full border rounded-xl px-4 py-3 text-sm bg-white outline-none focus:ring-2 transition ${
-                      errors.deliveryDate ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-indigo-300 focus:border-indigo-500"
-                    }`}
+                    aria-invalid={!!errors.deliveryDate}
+                    className="sp-input w-full px-4 py-3 text-base sm:text-sm"
                   />
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs sp-subtle mt-1">
                     This is your preferred date — we will confirm the delivery date when we call you.
                   </p>
                   {errors.deliveryDate && <p className="text-xs text-red-500 mt-1">{errors.deliveryDate}</p>}
@@ -731,8 +724,8 @@ export default function VariantAwareOrderForm({
           )}
 
           {optionsMode ? (
-            <div className="bg-gray-50 rounded-xl px-4 py-4 text-sm" aria-live="polite">
-              <p className="font-semibold text-gray-900 mb-2">Order summary</p>
+            <div className="sp-surface sp-rounded px-4 py-4 text-sm" aria-live="polite">
+              <p className="font-semibold mb-2">Order summary</p>
               {selectedOption ? (
                 <dl className="space-y-1.5">
                   {([
@@ -752,17 +745,17 @@ export default function VariantAwareOrderForm({
                       : []),
                   ] as [string, string][]).map(([k, v]) => (
                     <div key={k} className="flex justify-between gap-4">
-                      <dt className="text-gray-500 shrink-0">{k}</dt>
-                      <dd className="font-medium text-gray-900 text-right">{v}</dd>
+                      <dt className="sp-muted shrink-0">{k}</dt>
+                      <dd className="font-medium text-right">{v}</dd>
                     </div>
                   ))}
                 </dl>
               ) : (
-                <p className="text-gray-500">Choose an option above to see your total.</p>
+                <p className="sp-muted">Choose an option above to see your total.</p>
               )}
-              <div className="flex justify-between font-bold text-base pt-2 border-t border-gray-200 mt-3">
+              <div className="flex justify-between font-bold text-base pt-2 border-t sp-border mt-3">
                 <span>Total (Pay on delivery)</span>
-                <span style={{ color: primaryColor }}>{selectedOption ? formatNGN(total) : "—"}</span>
+                <span className="sp-primary-text">{selectedOption ? formatNGN(total) : "—"}</span>
               </div>
             </div>
           ) : (
@@ -771,28 +764,28 @@ export default function VariantAwareOrderForm({
             <label className="block text-sm font-semibold mb-1">Quantity</label>
             <div className="flex items-center gap-4">
               <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-10 h-10 rounded-full border border-gray-200 text-xl font-bold flex items-center justify-center active:bg-gray-100 transition">−</button>
+                className="sp-btn-outline w-10 h-10 text-xl font-bold flex items-center justify-center transition">−</button>
               <span className="text-xl font-bold w-6 text-center">{quantity}</span>
               <button type="button" onClick={() => setQuantity((q) => Math.min(20, q + 1))}
-                className="w-10 h-10 rounded-full border border-gray-200 text-xl font-bold flex items-center justify-center active:bg-gray-100 transition">+</button>
+                className="sp-btn-outline w-10 h-10 text-xl font-bold flex items-center justify-center transition">+</button>
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-xl px-4 py-4 text-sm">
+          <div className="sp-surface sp-rounded px-4 py-4 text-sm">
             <div className="flex justify-between mb-1">
-              <span className="text-gray-500">{productName} × {quantity}</span>
+              <span className="sp-muted">{productName} × {quantity}</span>
               <span className="font-semibold">{formatNGN(total)}</span>
             </div>
-            <div className="flex justify-between font-bold text-base pt-2 border-t border-gray-200 mt-2">
+            <div className="flex justify-between font-bold text-base pt-2 border-t sp-border mt-2">
               <span>Total (Pay on delivery)</span>
-              <span style={{ color: primaryColor }}>{formatNGN(total)}</span>
+              <span className="sp-primary-text">{formatNGN(total)}</span>
             </div>
           </div>
           </>
           )}
 
           {apiError && (
-            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <div className="text-sm text-red-700 bg-red-50 border border-red-200 sp-rounded px-4 py-3" role="alert">
               {apiError}
             </div>
           )}
@@ -800,15 +793,14 @@ export default function VariantAwareOrderForm({
           <button
             type="submit"
             disabled={loading || (!optionsMode && (outOfStock || (activeOptions.length > 0 && !hasAllRequired)))}
-            className="w-full text-white font-extrabold text-lg py-4 rounded-2xl shadow-md active:scale-95 transition-all disabled:opacity-60"
-            style={{ backgroundColor: primaryColor }}
+            className="sp-btn w-full font-extrabold text-lg py-4 shadow-md"
           >
             {loading ? "Placing order…"
               : !optionsMode && outOfStock ? "Out of Stock"
               : (ctaText ?? "Order Now — Pay on Delivery")}
           </button>
 
-          <p className="text-center text-xs text-gray-400">
+          <p className="text-center text-xs sp-subtle">
             No payment before delivery. Pay in full when your order is delivered.
           </p>
         </form>

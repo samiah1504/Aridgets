@@ -9,7 +9,7 @@ export default function Urgency({
   return (
     <section className="px-4 py-6">
       <div className="max-w-lg mx-auto">
-        <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-4">
+        <div className="bg-amber-50 border border-amber-300 sp-rounded px-5 py-4">
           <p className="text-amber-800 font-semibold text-sm leading-relaxed">{text}</p>
           {hasCountdown && (
             <p className="mt-2 text-xs text-amber-600">

@@ -31,8 +31,7 @@ export default function FurnitureTheme({
       {/* ── Announcement bar ───────────────────────────────────────────────── */}
       {enabled.has("announcementBar") && content.announcementBar && (
         <div
-          className="text-center py-2.5 px-4 text-sm font-medium tracking-wide"
-          style={{ backgroundColor: "var(--product-primary)", color: "#fff" }}
+          className="text-center py-2.5 px-4 text-sm font-medium tracking-wide sp-on-primary"
         >
           {content.announcementBar}
         </div>
@@ -45,19 +44,18 @@ export default function FurnitureTheme({
           <div className="order-2 lg:order-1 mt-8 lg:mt-0">
             {content.eyebrow && (
               <p
-                className="text-xs font-bold uppercase tracking-[0.2em] mb-4"
-                style={{ color: "var(--product-primary)" }}
+                className="text-xs font-bold uppercase tracking-[0.2em] mb-4 sp-primary-text"
               >
                 {content.eyebrow}
               </p>
             )}
             {content.headline && (
-              <h1 className="text-3xl lg:text-4xl xl:text-5xl font-serif font-bold leading-tight mb-5">
+              <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight mb-5">
                 {content.headline}
               </h1>
             )}
             {content.subhead && (
-              <p className="text-base lg:text-lg text-gray-500 leading-relaxed mb-7">
+              <p className="text-base lg:text-lg sp-muted leading-relaxed mb-7">
                 {content.subhead}
               </p>
             )}
@@ -67,18 +65,18 @@ export default function FurnitureTheme({
                   {"★".repeat(Math.min(5, Math.max(0, Math.round(content.starRating))))}
                   {"☆".repeat(5 - Math.min(5, Math.max(0, Math.round(content.starRating))))}
                 </span>
-                <span className="text-sm text-gray-400">
+                <span className="text-sm sp-subtle">
                   {content.starRating.toFixed(1)} · Verified buyers
                 </span>
               </div>
             )}
             <div className="flex items-baseline gap-4 mb-7">
-              <span className="text-3xl font-bold" style={{ color: "var(--product-primary)" }}>
+              <span className="text-3xl font-bold sp-primary-text">
                 {formatNGN(product.price)}
               </span>
               {product.compare_at_price && product.compare_at_price > product.price && (
                 <>
-                  <span className="text-xl text-gray-300 line-through">
+                  <span className="text-xl sp-subtle line-through">
                     {formatNGN(product.compare_at_price)}
                   </span>
                   <span className="text-sm font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded">
@@ -89,16 +87,15 @@ export default function FurnitureTheme({
             </div>
             <a
               href="#order"
-              className="inline-block px-8 py-3.5 text-white font-semibold rounded-xl text-base shadow-md hover:opacity-90 active:scale-95 transition-all"
-              style={{ backgroundColor: "var(--product-primary)" }}
+              className="sp-btn inline-block px-8 py-3.5 font-semibold text-base shadow-md"
             >
               {content.ctaText ?? "Order Now — Pay on Delivery"}
             </a>
             {content.trustRow && content.trustRow.length > 0 && (
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-5 text-sm text-gray-400">
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-5 text-sm sp-subtle">
                 {content.trustRow.map((item, i) => (
                   <span key={i} className="flex items-center gap-1.5">
-                    <span style={{ color: "var(--product-primary)" }}>✓</span>
+                    <span className="sp-primary-text">✓</span>
                     {item}
                   </span>
                 ))}
@@ -123,12 +120,12 @@ export default function FurnitureTheme({
 
       {/* ── Specs strip ─────────────────────────────────────────────────────── */}
       {specChips.length > 0 && (
-        <section className="border-y border-gray-100 py-5">
+        <section className="border-y sp-border py-5">
           <div className="max-w-6xl mx-auto px-4 flex flex-wrap justify-center gap-6">
             {specChips.map(({ label, value }) => (
               <div key={label} className="flex items-center gap-2 text-sm">
-                <span className="text-gray-400 font-medium">{label}:</span>
-                <span className="font-semibold text-gray-700">{value}</span>
+                <span className="sp-subtle font-medium">{label}:</span>
+                <span className="font-semibold">{value}</span>
               </div>
             ))}
           </div>
@@ -137,8 +134,8 @@ export default function FurnitureTheme({
 
       {/* ── Problem ─────────────────────────────────────────────────────────── */}
       {enabled.has("problem") && content.problemText && (
-        <section className="max-w-3xl mx-auto px-4 py-10 text-center">
-          <p className="text-lg text-gray-600 leading-relaxed italic">
+        <section className="max-w-3xl mx-auto px-4 sp-section text-center">
+          <p className="text-lg sp-muted leading-relaxed italic">
             &ldquo;{content.problemText}&rdquo;
           </p>
         </section>
@@ -146,14 +143,14 @@ export default function FurnitureTheme({
 
       {/* ── Benefits ────────────────────────────────────────────────────────── */}
       {enabled.has("benefits") && content.benefits && content.benefits.length > 0 && (
-        <section className="max-w-5xl mx-auto px-4 py-10">
+        <section className="max-w-5xl mx-auto px-4 sp-section">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {content.benefits.map((b, i) => (
-              <div key={i} className="flex gap-4 p-5 rounded-2xl border border-gray-100">
+              <div key={i} className="flex gap-4 p-5 sp-card">
                 {b.icon && (
                   <span className="text-2xl shrink-0">{b.icon}</span>
                 )}
-                <p className="text-sm text-gray-700 leading-relaxed">{b.text}</p>
+                <p className="text-sm leading-relaxed">{b.text}</p>
               </div>
             ))}
           </div>
@@ -162,7 +159,7 @@ export default function FurnitureTheme({
 
       {/* ── Media gallery ───────────────────────────────────────────────────── */}
       {enabled.has("mediaGallery") && (galleryImgs.length > 1 || videos.length > 0) && (
-        <section className="max-w-6xl mx-auto px-4 py-10">
+        <section className="max-w-6xl mx-auto px-4 sp-section">
           {galleryImgs.length > 1 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {galleryImgs.map((img) => (
@@ -189,22 +186,21 @@ export default function FurnitureTheme({
 
       {/* ── How it works ────────────────────────────────────────────────────── */}
       {enabled.has("howItWorks") && content.howItWorksSteps && content.howItWorksSteps.length > 0 && (
-        <section className="max-w-4xl mx-auto px-4 py-10">
-          <h2 className="text-2xl font-serif font-bold text-center mb-8">
+        <section className="max-w-4xl mx-auto px-4 sp-section">
+          <h2 className="text-2xl font-bold text-center mb-8">
             How It Works
           </h2>
           <ol className="space-y-6">
             {content.howItWorksSteps.map((step, i) => (
               <li key={i} className="flex gap-5 items-start">
                 <span
-                  className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                  style={{ backgroundColor: "var(--product-primary)" }}
+                  className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm sp-on-primary"
                 >
                   {i + 1}
                 </span>
                 <div>
-                  <p className="font-semibold text-gray-800">{step.title}</p>
-                  {step.description && <p className="text-sm text-gray-500 mt-1 leading-relaxed">{step.description}</p>}
+                  <p className="font-semibold">{step.title}</p>
+                  {step.description && <p className="text-sm sp-muted mt-1 leading-relaxed">{step.description}</p>}
                 </div>
               </li>
             ))}
@@ -214,11 +210,11 @@ export default function FurnitureTheme({
 
       {/* ── Features & Specs ────────────────────────────────────────────────── */}
       {enabled.has("featuresSpecs") && content.featuresSpecs && content.featuresSpecs.length > 0 && (
-        <section className="max-w-4xl mx-auto px-4 py-10">
-          <h2 className="text-2xl font-serif font-bold text-center mb-6">Details</h2>
-          <ul className="divide-y divide-gray-100">
+        <section className="max-w-4xl mx-auto px-4 sp-section">
+          <h2 className="text-2xl font-bold text-center mb-6">Details</h2>
+          <ul className="divide-y sp-divide">
             {content.featuresSpecs.map((item, i) => (
-              <li key={i} className="py-3 text-sm text-gray-700">{item}</li>
+              <li key={i} className="py-3 text-sm">{item}</li>
             ))}
           </ul>
         </section>
