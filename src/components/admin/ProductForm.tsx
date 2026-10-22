@@ -430,6 +430,7 @@ export default function ProductForm({ product: initial, permissions }: Props) {
           productName={product.name}
           price={product.price}
           content={content}
+          sections={sections}
           templateType={product.template_type}
         />
         <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-5">
