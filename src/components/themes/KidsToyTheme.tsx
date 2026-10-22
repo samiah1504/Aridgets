@@ -168,7 +168,7 @@ export default function KidsToyTheme({
                   </span>
                   <div>
                     <p className="font-extrabold text-gray-800">{step.title}</p>
-                    <p className="text-sm text-gray-500 mt-1 leading-relaxed">{step.description}</p>
+                    {step.description && <p className="text-sm text-gray-500 mt-1 leading-relaxed">{step.description}</p>}
                   </div>
                 </div>
               ))}

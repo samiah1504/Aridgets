@@ -19,8 +19,8 @@ export default function HowItWorks({ steps }: { steps?: Step[] }) {
                 {i + 1}
               </div>
               <div>
-                <h3 className="font-bold text-base mb-1">{step.title}</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{step.description}</p>
+                <h3 className="font-bold text-base">{step.title}</h3>
+                {step.description && <p className="text-gray-600 text-sm leading-relaxed mt-1">{step.description}</p>}
               </div>
             </div>
           ))}
