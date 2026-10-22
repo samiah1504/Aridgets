@@ -222,7 +222,7 @@ export default function KidsFashionTheme({
                   {i + 1}
                 </span>
                 <p className="font-semibold text-gray-800 mb-1">{step.title}</p>
-                <p className="text-sm text-gray-500 leading-relaxed">{step.description}</p>
+                {step.description && <p className="text-sm text-gray-500 leading-relaxed">{step.description}</p>}
               </div>
             ))}
           </div>
