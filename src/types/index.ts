@@ -34,8 +34,10 @@ export interface PurchaseOption {
   imageUrl?: string;
   includes?: string[];
   active: boolean;
-  minQty?: number; // default 1
-  maxQty?: number; // default 20
+  /** @deprecated Retired per-option limits: ignored when ordering, removed on next save */
+  minQty?: number;
+  /** @deprecated Retired per-option limits: ignored when ordering, removed on next save */
+  maxQty?: number;
 }
 
 // What the customer bought, frozen onto the lead at order time

@@ -12,6 +12,8 @@ import BulkField from "./BulkField";
 import PurchaseOptionsEditor from "./PurchaseOptionsEditor";
 import {
   DELIVERY_DEFAULTS,
+  cleanPurchaseOption,
+  liveWithoutAvailableOption,
   lowestPrice,
   resolveDeliverySettings,
   validatePurchaseOptions,
@@ -234,29 +236,42 @@ export default function ProductForm({ product: initial, permissions }: Props) {
   ];
 
   const purchaseOptions = content.purchaseOptions ?? [];
-  const optionProblems = usesPurchaseOptions
-    ? validatePurchaseOptions(purchaseOptions, { publishing: product.status === "live" })
-    : [];
+  const optionFieldProblems = usesPurchaseOptions ? validatePurchaseOptions(purchaseOptions) : [];
+  const liveBlock = usesPurchaseOptions ? liveWithoutAvailableOption(purchaseOptions, product.status) : null;
+  const optionProblems = [
+    ...optionFieldProblems,
+    ...(liveBlock === "no_options"
+      ? ["This page is Live but has no options. Add at least one option, or set the page to Draft in the Basic tab."]
+      : liveBlock === "none_available"
+        ? ["This page is Live, but none of its options is available to customers, so nobody could order. Tick “Available to customers” on at least one option, or set the page to Draft in the Basic tab to save without publishing."]
+        : []),
+  ];
   const delivery = resolveDeliverySettings(content, product.template_type);
+
+  // Any edit makes the last save result (success or error) out of date
+  function markEdited() {
+    setSaved(false);
+    setError("");
+  }
 
   function setBulkField(key: keyof BulkText, value: string) {
     setBulk((b) => ({ ...b, [key]: value }));
-    setSaved(false);
+    markEdited();
   }
 
   function setField<K extends keyof ProductRow>(key: K, value: ProductRow[K]) {
     setProduct((p) => ({ ...p, [key]: value }));
-    setSaved(false);
+    markEdited();
   }
 
   function setContent(updates: Partial<ProductContent>) {
     setProduct((p) => ({ ...p, content: { ...(p.content as ProductContent), ...updates } }));
-    setSaved(false);
+    markEdited();
   }
 
   function setTheme(updates: Partial<ProductTheme>) {
     setProduct((p) => ({ ...p, theme: { ...(p.theme as ProductTheme), ...updates } }));
-    setSaved(false);
+    markEdited();
   }
 
   function toggleSection(key: string) {
@@ -267,7 +282,9 @@ export default function ProductForm({ product: initial, permissions }: Props) {
   }
 
   async function handleSave() {
+    if (saving) return;
     setError("");
+    setSaved(false);
     // Never save half-parsed content: the saved items stay intact and the
     // textareas keep the user's input so they can fix the flagged lines.
     if (contentProblems.length > 0) {
@@ -292,11 +309,7 @@ export default function ProductForm({ product: initial, permissions }: Props) {
     const nextContent: ProductContent = {
       ...content,
       ...(content.purchaseOptions && {
-        purchaseOptions: content.purchaseOptions.map((o) => ({
-          ...o,
-          name: o.name.trim(),
-          description: o.description?.trim() || undefined,
-        })),
+        purchaseOptions: content.purchaseOptions.map(cleanPurchaseOption),
       }),
       trustRow: parsed.trustRow.items,
       benefits: parsed.benefits.items,
@@ -305,38 +318,47 @@ export default function ProductForm({ product: initial, permissions }: Props) {
       testimonials: parsed.testimonials.items,
       faq: parsed.faq.items,
     };
-    const supabase = createClient();
-    const { error: err } = await supabase
-      .from("products")
-      .update({
-        name: product.name,
-        slug: product.slug,
-        price: fromPrice ?? product.price,
-        compare_at_price: product.compare_at_price,
-        whatsapp_number: product.whatsapp_number,
-        show_on_homepage: product.show_on_homepage,
-        theme: product.theme,
-        content: nextContent,
-        sections: product.sections,
-        template_type: product.template_type as TemplateType,
-        ...(canPublish ? { status: product.status } : {}),
-        ...(canEditTracking
-          ? {
-              pixel_id: product.pixel_id,
-              capi_access_token: product.capi_access_token,
-              capi_test_event_code: product.capi_test_event_code,
-            }
-          : {}),
-      })
-      .eq("id", product.id);
+    try {
+      const supabase = createClient();
+      const { data: updated, error: err } = await supabase
+        .from("products")
+        .update({
+          name: product.name,
+          slug: product.slug,
+          price: fromPrice ?? product.price,
+          compare_at_price: product.compare_at_price,
+          whatsapp_number: product.whatsapp_number,
+          show_on_homepage: product.show_on_homepage,
+          theme: product.theme,
+          content: nextContent,
+          sections: product.sections,
+          template_type: product.template_type as TemplateType,
+          ...(canPublish ? { status: product.status } : {}),
+          ...(canEditTracking
+            ? {
+                pixel_id: product.pixel_id,
+                capi_access_token: product.capi_access_token,
+                capi_test_event_code: product.capi_test_event_code,
+              }
+            : {}),
+        })
+        .eq("id", product.id)
+        .select("id");
 
-    if (err) {
-      setError(err.message);
-    } else {
-      setProduct((p) => ({ ...p, content: nextContent, price: fromPrice ?? p.price }));
-      setSaved(true);
+      if (err) {
+        setError(`Not saved: ${err.message}`);
+      } else if (!updated || updated.length !== 1) {
+        // RLS filters rows silently: no error, but nothing was written
+        setError("Not saved: your account is not allowed to edit this product. Ask an admin to check your role.");
+      } else {
+        setProduct((p) => ({ ...p, content: nextContent, price: fromPrice ?? p.price }));
+        setSaved(true);
+      }
+    } catch {
+      setError("Not saved: could not reach the server. Check your connection and try again.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   // ─── tab content ─────────────────────────────────────────────────────────
@@ -749,10 +771,22 @@ export default function ProductForm({ product: initial, permissions }: Props) {
         </p>
         {showOptionErrors && optionProblems.length > 0 && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-            <p className="text-sm font-semibold text-red-700">Nothing was saved — please fix:</p>
-            <ul className="mt-1 list-disc list-inside text-sm text-red-600">
+            <p className="text-sm font-semibold text-red-700">Nothing was saved yet — please fix:</p>
+            <ul className="mt-1 list-disc list-inside text-sm text-red-600 space-y-1">
               {optionProblems.map((p) => <li key={p}>{p}</li>)}
             </ul>
+            {liveBlock === "none_available" && (
+              <button
+                type="button"
+                onClick={() =>
+                  setContent({ purchaseOptions: purchaseOptions.map((o) => ({ ...o, active: true })) })
+                }
+                className="mt-3 w-full sm:w-auto rounded-lg bg-white border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 transition"
+              >
+                Make all {purchaseOptions.length} options available
+              </button>
+            )}
+            <p className="mt-2 text-xs text-red-500">Your options are kept exactly as entered.</p>
           </div>
         )}
         <Field label="Heading above the options" hint="Shown in the order form.">
@@ -766,6 +800,7 @@ export default function ProductForm({ product: initial, permissions }: Props) {
           productId={product.id}
           value={purchaseOptions}
           onChange={(v) => setContent({ purchaseOptions: v })}
+          highlightUnavailable={showOptionErrors && liveBlock === "none_available"}
         />
         <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-1">
           {saved && <span className="text-sm text-green-600 font-medium text-center">Saved ✓</span>}
