@@ -44,7 +44,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
 
   let query = supabase
     .from("leads")
-    .select("id, order_number, name, phone, state, total, status, is_test, created_at, products(name)")
+    .select("id, order_number, name, phone, state, total, status, is_test, created_at, purchase_option, products(name)")
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -123,7 +123,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
                       <div className="text-gray-500 text-xs space-y-0.5">
                         {canViewContact && <p>{lead.phone}</p>}
                         {product?.name && (
-                          <p className="truncate max-w-[180px]">{product.name}</p>
+                          <p className="truncate max-w-[180px]">
+                            {product.name}
+                            {lead.purchase_option && ` · ${lead.purchase_option.name}`}
+                          </p>
                         )}
                       </div>
                       <div className="text-right">
@@ -190,7 +193,12 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
                         </td>
                         <td className="px-4 py-3 text-gray-600">{canViewContact ? lead.phone : "•••"}</td>
                         <td className="px-4 py-3 text-gray-600">{lead.state}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{product?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">
+                          {product?.name ?? "—"}
+                          {lead.purchase_option && (
+                            <span className="block text-gray-400">{lead.purchase_option.name}</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-gray-700 font-medium">{formatNGN(lead.total)}</td>
                         <td className="px-4 py-3">
                           <span

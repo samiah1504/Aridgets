@@ -9,6 +9,7 @@ interface HeroProps {
   trustRow?: string[];
   price: number;
   compareAtPrice?: number | null;
+  pricePrefix?: string;
 }
 
 export default function Hero({
@@ -20,6 +21,7 @@ export default function Hero({
   trustRow,
   price,
   compareAtPrice,
+  pricePrefix,
 }: HeroProps) {
   return (
     <section className="px-4 py-8 max-w-lg mx-auto">
@@ -51,6 +53,7 @@ export default function Hero({
         <p className="text-base text-gray-600 leading-relaxed mb-5">{subhead}</p>
       )}
       <div className="flex items-baseline gap-3 mb-5">
+        {pricePrefix && <span className="text-base font-semibold text-gray-500">{pricePrefix}</span>}
         <span
           className="text-3xl font-extrabold"
           style={{ color: "var(--product-primary)" }}

@@ -5,6 +5,13 @@ import { isValidNGPhone, normaliseNGPhone } from "@/lib/utils/phone";
 import { NIGERIAN_STATES } from "@/lib/constants/states";
 import { sendCAPIEvent } from "@/lib/capi";
 import { sendPushToAll } from "@/lib/push";
+import {
+  quantityBounds,
+  resolveDeliverySettings,
+  toSnapshot,
+  validateDeliveryDate,
+} from "@/lib/purchaseOptions";
+import type { DeliveryPreference, ProductContent, PurchaseOptionSnapshot } from "@/types";
 import type { Database } from "@/types/database";
 
 type LeadInsert = Database["public"]["Tables"]["leads"]["Insert"];
@@ -29,7 +36,7 @@ export async function POST(request: NextRequest) {
   const rawState = typeof b.state === "string" ? b.state.trim() : "";
   const rawAddress = typeof b.address === "string" ? b.address.trim().slice(0, 500) : "";
   const rawCity = typeof b.city === "string" ? b.city.trim().slice(0, 80) : null;
-  const quantity = Math.min(20, Math.max(1, Math.round(Number(b.quantity ?? 1)) || 1));
+  let quantity = Math.min(20, Math.max(1, Math.round(Number(b.quantity ?? 1)) || 1));
 
   if (!productId) return NextResponse.json({ error: "product_id is required" }, { status: 400 });
   if (!rawName) return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -55,7 +62,7 @@ export async function POST(request: NextRequest) {
   // Fetch product price (anon can read live products via RLS)
   const { data: rawProduct, error: productError } = await supabase
     .from("products")
-    .select("id, price, status, content")
+    .select("id, price, status, content, template_type")
     .eq("id", productId)
     .single();
 
@@ -67,7 +74,8 @@ export async function POST(request: NextRequest) {
     id: string;
     price: number;
     status: string;
-    content: { seriousBuyer?: { enabled?: boolean; required?: boolean } } | null;
+    content: ProductContent | null;
+    template_type: string | null;
   };
   if (product.status !== "live") {
     return NextResponse.json({ error: "Product not available" }, { status: 404 });
@@ -84,12 +92,48 @@ export async function POST(request: NextRequest) {
   }
 
   let unitPrice = product.price;
-
-  // If a variant was selected, validate it and use its price_override.
-  // Only a variant that actually exists is stored — a bogus ID from a
-  // tampered request must never make the insert fail.
   let validVariantId: string | null = null;
-  if (variantId) {
+  let purchaseOption: PurchaseOptionSnapshot | null = null;
+
+  if (product.template_type === "options_bundles") {
+    // Purchasing options: the price always comes from the saved product
+    // configuration. Any price or total the browser sends is ignored, and a
+    // mismatch with what the customer was shown is rejected.
+    const optionId = typeof b.purchase_option_id === "string" ? b.purchase_option_id : "";
+    if (!optionId) {
+      return NextResponse.json({ error: "Please choose an option" }, { status: 400 });
+    }
+    const option = (product.content?.purchaseOptions ?? []).find((o) => o.id === optionId);
+    if (!option || !option.active) {
+      return NextResponse.json(
+        { error: "That option is no longer available. Please refresh the page and choose again." },
+        { status: 400 }
+      );
+    }
+    const { min, max } = quantityBounds(option);
+    const requestedQty = b.quantity;
+    if (typeof requestedQty !== "number" || !Number.isInteger(requestedQty) || requestedQty < min || requestedQty > max) {
+      return NextResponse.json(
+        { error: `Quantity must be a whole number from ${min} to ${max}` },
+        { status: 400 }
+      );
+    }
+    const shownPriceChanged =
+      (b.expected_unit_price !== undefined && b.expected_unit_price !== option.price) ||
+      (b.expected_total !== undefined && b.expected_total !== option.price * requestedQty);
+    if (shownPriceChanged) {
+      return NextResponse.json(
+        { error: "The price of this option has changed. Please refresh the page to see the current price." },
+        { status: 409 }
+      );
+    }
+    unitPrice = option.price;
+    quantity = requestedQty;
+    purchaseOption = toSnapshot(option);
+  } else if (variantId) {
+    // If a variant was selected, validate it and use its price_override.
+    // Only a variant that actually exists is stored — a bogus ID from a
+    // tampered request must never make the insert fail.
     const { data: variant } = await supabase
       .from("product_variants")
       .select("id, price_override, active")
@@ -105,6 +149,22 @@ export async function POST(request: NextRequest) {
   }
 
   const total = unitPrice * quantity;
+
+  // Delivery preference (a customer preference, not a delivery commitment)
+  const delivery = resolveDeliverySettings(product.content, product.template_type);
+  let deliveryPreference: DeliveryPreference | null = null;
+  let deliveryDate: string | null = null;
+  if (delivery.enabled) {
+    if (b.delivery_preference !== "asap" && b.delivery_preference !== "date") {
+      return NextResponse.json({ error: "Please tell us when you want it delivered" }, { status: 400 });
+    }
+    deliveryPreference = b.delivery_preference;
+    if (deliveryPreference === "date") {
+      const dateError = validateDeliveryDate(b.delivery_date);
+      if (dateError) return NextResponse.json({ error: dateError }, { status: 400 });
+      deliveryDate = b.delivery_date as string;
+    }
+  }
 
   const headerStore = await headers();
   const clientIp =
@@ -134,6 +194,10 @@ export async function POST(request: NextRequest) {
     client_ip: clientIp,
     client_user_agent: clientUserAgent,
     variant_id: validVariantId || undefined,
+    purchase_option_id: purchaseOption?.id ?? null,
+    purchase_option: purchaseOption,
+    delivery_preference: deliveryPreference,
+    delivery_date: deliveryDate,
     selected_options: rawSelectedOptions || undefined,
     is_test: b.is_test === true,
     tracking_session_id:

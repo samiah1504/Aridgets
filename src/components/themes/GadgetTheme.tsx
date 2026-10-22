@@ -11,6 +11,7 @@ import Urgency from "@/components/sections/Urgency";
 import Guarantee from "@/components/sections/Guarantee";
 import FAQ from "@/components/sections/FAQ";
 import VariantAwareOrderForm from "./VariantAwareOrderForm";
+import type { DeliverySettings } from "@/lib/purchaseOptions";
 import type { ProductContent, ProductTheme, SectionConfig, ProductOption, ProductVariant } from "@/types";
 
 interface MediaItem {
@@ -40,10 +41,12 @@ export interface ThemeProps {
     utmCampaign?: string;
     utmContent?: string;
   };
+  delivery: DeliverySettings;
+  today: string; // YYYY-MM-DD in Nigeria
 }
 
 export default function GadgetTheme({
-  product, content, theme, sections, media, options, variants, tracking,
+  product, content, theme, sections, media, options, variants, tracking, delivery, today,
 }: ThemeProps) {
   const sectionMap: Record<string, React.ReactNode> = {
     announcementBar: <AnnouncementBar text={content.announcementBar} />,
@@ -78,6 +81,8 @@ export default function GadgetTheme({
         variants={variants}
         primaryColor={theme.primary}
         notice={content.seriousBuyer}
+        delivery={delivery}
+        today={today}
         title={content.orderFormTitle}
         successHeadline={content.orderSuccessHeadline}
         successBody={content.orderSuccessBody}

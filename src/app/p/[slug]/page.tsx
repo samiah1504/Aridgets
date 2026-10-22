@@ -10,6 +10,8 @@ import GadgetTheme from "@/components/themes/GadgetTheme";
 import FurnitureTheme from "@/components/themes/FurnitureTheme";
 import KidsToyTheme from "@/components/themes/KidsToyTheme";
 import KidsFashionTheme from "@/components/themes/KidsFashionTheme";
+import OptionsBundlesTheme from "@/components/themes/OptionsBundlesTheme";
+import { resolveDeliverySettings, todayInLagos } from "@/lib/purchaseOptions";
 
 type Params = Promise<{ slug: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -177,12 +179,15 @@ export default async function ProductPage({
     options,
     variants,
     tracking,
+    delivery: resolveDeliverySettings(content, templateType),
+    today: todayInLagos(),
   };
 
   const ThemeComponent =
     templateType === "furniture" ? FurnitureTheme
     : templateType === "kids_toy" ? KidsToyTheme
     : templateType === "kids_fashion" ? KidsFashionTheme
+    : templateType === "options_bundles" ? OptionsBundlesTheme
     : GadgetTheme;
 
   return (
