@@ -9,7 +9,8 @@ import { isValidNGPhone } from "@/lib/utils/phone";
 import {
   formatDeliveryDate,
   latestDeliveryDate,
-  quantityBounds,
+  MIN_ORDER_QTY,
+  maxOrderQuantity,
   validateDeliveryDate,
   type DeliverySettings,
 } from "@/lib/purchaseOptions";
@@ -116,6 +117,8 @@ export default function VariantAwareOrderForm({
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   const [quantity, setQuantity] = useState(1);
+  // Typed text of the options quantity box (may be briefly empty while editing)
+  const [qtyText, setQtyText] = useState("1");
   const [buyerConfirmed, setBuyerConfirmed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -171,8 +174,15 @@ export default function VariantAwareOrderForm({
     if (option.id === selectedOptionId) return;
     setSelectedOptionId(option.id);
     // Start each option at its own minimum quantity
-    setQuantity(quantityBounds(option).min);
+    setQuantity(MIN_ORDER_QTY);
+    setQtyText(String(MIN_ORDER_QTY));
     setErrors((e) => ({ ...e, purchaseOption: "" }));
+  }
+
+  function changeOptionQuantity(next: number, maxQty: number) {
+    const q = Math.min(maxQty, Math.max(MIN_ORDER_QTY, next));
+    setQuantity(q);
+    setQtyText(String(q));
   }
 
   function selectValue(optionId: string, valueId: string) {
@@ -350,7 +360,7 @@ export default function VariantAwareOrderForm({
               <div role="radiogroup" aria-labelledby="order-options-label" className="space-y-3">
                 {purchaseOptions!.map((option) => {
                   const selected = option.id === selectedOptionId;
-                  const bounds = quantityBounds(option);
+                  const maxQty = maxOrderQuantity(option.price);
                   return (
                     <div
                       key={option.id}
@@ -410,21 +420,35 @@ export default function VariantAwareOrderForm({
                       </button>
                       {selected && (
                         <div className="flex items-center justify-between gap-3 border-t border-gray-200 px-3 py-3">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-gray-700">Qty</span>
                             <button
                               type="button"
                               aria-label="Decrease quantity"
-                              disabled={quantity <= bounds.min}
-                              onClick={() => setQuantity((q) => Math.max(bounds.min, q - 1))}
+                              disabled={quantity <= MIN_ORDER_QTY}
+                              onClick={() => changeOptionQuantity(quantity - 1, maxQty)}
                               className="w-9 h-9 rounded-full border border-gray-300 bg-white text-lg font-bold flex items-center justify-center active:bg-gray-100 disabled:opacity-40 transition"
                             >−</button>
-                            <span className="text-lg font-bold w-6 text-center" aria-live="polite">{quantity}</span>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              aria-label="Quantity"
+                              min={MIN_ORDER_QTY}
+                              max={maxQty}
+                              value={qtyText}
+                              onChange={(e) => {
+                                setQtyText(e.target.value);
+                                const n = Number(e.target.value);
+                                if (Number.isInteger(n) && n >= MIN_ORDER_QTY) changeOptionQuantity(n, maxQty);
+                              }}
+                              onBlur={() => setQtyText(String(quantity))}
+                              className="w-16 h-9 rounded-lg border border-gray-300 bg-white text-center text-base font-bold outline-none focus:ring-2 focus:ring-gray-300"
+                            />
                             <button
                               type="button"
                               aria-label="Increase quantity"
-                              disabled={quantity >= bounds.max}
-                              onClick={() => setQuantity((q) => Math.min(bounds.max, q + 1))}
+                              disabled={quantity >= maxQty}
+                              onClick={() => changeOptionQuantity(quantity + 1, maxQty)}
                               className="w-9 h-9 rounded-full border border-gray-300 bg-white text-lg font-bold flex items-center justify-center active:bg-gray-100 disabled:opacity-40 transition"
                             >+</button>
                           </div>

@@ -11,15 +11,19 @@ import type {
   TemplateType,
 } from "@/types";
 
-export const DEFAULT_MIN_QTY = 1;
-export const DEFAULT_MAX_QTY = 20;
-const MAX_QTY_LIMIT = 100;
 const MAX_DELIVERY_DAYS_AHEAD = 365;
 
-export function quantityBounds(option: PurchaseOption): { min: number; max: number } {
-  const min = option.minQty && option.minQty > 0 ? option.minQty : DEFAULT_MIN_QTY;
-  const max = option.maxQty && option.maxQty > 0 ? option.maxQty : DEFAULT_MAX_QTY;
-  return { min, max: Math.max(min, max) };
+// System-level order safeguards (not configurable per option). Quantity always
+// starts at 1. leads.total and products.price are Postgres integers, so an
+// order total must stay well below 2,147,483,647.
+export const MIN_ORDER_QTY = 1;
+export const MAX_ORDER_QTY = 999;
+export const MAX_ORDER_TOTAL = 2_000_000_000;
+
+/** Largest quantity allowed for a unit price, under both safeguards. */
+export function maxOrderQuantity(unitPrice: number): number {
+  if (!(unitPrice > 0)) return MAX_ORDER_QTY;
+  return Math.max(MIN_ORDER_QTY, Math.min(MAX_ORDER_QTY, Math.floor(MAX_ORDER_TOTAL / unitPrice)));
 }
 
 export function activePurchaseOptions(content: ProductContent | null | undefined): PurchaseOption[] {
@@ -40,36 +44,44 @@ export function toSnapshot(option: PurchaseOption): PurchaseOptionSnapshot {
   };
 }
 
-/**
- * Problems that must be fixed before the options can be saved.
- * `publishing` adds the rule that a live page needs at least one active option.
- */
-export function validatePurchaseOptions(
-  options: PurchaseOption[],
-  { publishing }: { publishing: boolean }
-): string[] {
+/** Field problems that must be fixed before the options can be saved. */
+export function validatePurchaseOptions(options: PurchaseOption[]): string[] {
   const errors: string[] = [];
   options.forEach((o, i) => {
     const label = `Option ${i + 1}${o.name.trim() ? ` (${o.name.trim()})` : ""}`;
-    if (!o.name.trim()) errors.push(`${label}: name is required`);
+    if (!o.name.trim()) errors.push(`${label}: enter an option name`);
     if (!Number.isInteger(o.price) || o.price <= 0) {
-      errors.push(`${label}: price must be a whole naira amount above 0`);
-    }
-    const { minQty, maxQty } = o;
-    if (minQty !== undefined && (!Number.isInteger(minQty) || minQty < 1 || minQty > MAX_QTY_LIMIT)) {
-      errors.push(`${label}: minimum quantity must be a whole number from 1 to ${MAX_QTY_LIMIT}`);
-    }
-    if (maxQty !== undefined && (!Number.isInteger(maxQty) || maxQty < 1 || maxQty > MAX_QTY_LIMIT)) {
-      errors.push(`${label}: maximum quantity must be a whole number from 1 to ${MAX_QTY_LIMIT}`);
-    }
-    if (minQty !== undefined && maxQty !== undefined && minQty > maxQty) {
-      errors.push(`${label}: minimum quantity cannot be more than the maximum`);
+      errors.push(`${label}: enter a price in whole naira, above ₦0`);
+    } else if (o.price > MAX_ORDER_TOTAL) {
+      errors.push(`${label}: price is too large`);
     }
   });
-  if (publishing && !options.some((o) => o.active)) {
-    errors.push("Add at least one active option before publishing this page");
-  }
   return errors;
+}
+
+/**
+ * A live page must offer at least one option, otherwise nobody can order.
+ * Returns why saving is blocked, or null.
+ */
+export function liveWithoutAvailableOption(
+  options: PurchaseOption[],
+  status: string
+): "no_options" | "none_available" | null {
+  if (status !== "live") return null;
+  if (options.length === 0) return "no_options";
+  return options.some((o) => o.active) ? null : "none_available";
+}
+
+/** Option data as saved: trimmed, with retired per-option quantity limits removed. */
+export function cleanPurchaseOption(o: PurchaseOption): PurchaseOption {
+  const clean: PurchaseOption = {
+    ...o,
+    name: o.name.trim(),
+    description: o.description?.trim() || undefined,
+  };
+  delete clean.minQty;
+  delete clean.maxQty;
+  return clean;
 }
 
 // ── Delivery preference ─────────────────────────────────────────────────────

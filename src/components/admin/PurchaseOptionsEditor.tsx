@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatNGN } from "@/lib/utils/currency";
 import { formatStringList, parseStringList } from "@/lib/utils/bulkContent";
-import { DEFAULT_MAX_QTY } from "@/lib/purchaseOptions";
 import type { PurchaseOption } from "@/types";
 
 // Admin editor for the purchasing options of a Product Options & Bundles page.
@@ -15,6 +14,8 @@ interface Props {
   productId: string;
   value: PurchaseOption[];
   onChange: (options: PurchaseOption[]) => void;
+  /** Draws attention to unavailable options (a live page needs at least one) */
+  highlightUnavailable?: boolean;
 }
 
 const inputClass =
@@ -24,13 +25,7 @@ function newOption(): PurchaseOption {
   return { id: crypto.randomUUID(), name: "", price: 0, active: true };
 }
 
-function optionalInt(v: string): number | undefined {
-  if (v.trim() === "") return undefined;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : undefined;
-}
-
-export default function PurchaseOptionsEditor({ productId, value, onChange }: Props) {
+export default function PurchaseOptionsEditor({ productId, value, onChange, highlightUnavailable }: Props) {
   // Raw "included items" text per option, so typing newlines isn't swallowed
   const [includesText, setIncludesText] = useState<Record<string, string>>(() =>
     Object.fromEntries(value.map((o) => [o.id, formatStringList(o.includes)]))
@@ -82,7 +77,11 @@ export default function PurchaseOptionsEditor({ productId, value, onChange }: Pr
             <p className="text-sm font-semibold text-gray-900">
               Option {i + 1}
               {o.price > 0 && <span className="ml-2 font-normal text-gray-400">{formatNGN(o.price)}</span>}
-              {!o.active && <span className="ml-2 text-xs font-medium text-gray-400">(hidden)</span>}
+              {!o.active && (
+                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">
+                  Not available
+                </span>
+              )}
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -206,47 +205,30 @@ export default function PurchaseOptionsEditor({ productId, value, onChange }: Pr
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 items-end">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1" htmlFor={`po-min-${o.id}`}>
-                Min quantity
-              </label>
-              <input
-                id={`po-min-${o.id}`}
-                type="number"
-                inputMode="numeric"
-                min={1}
-                value={o.minQty ?? ""}
-                onChange={(e) => update(i, { minQty: optionalInt(e.target.value) })}
-                placeholder="1"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1" htmlFor={`po-max-${o.id}`}>
-                Max quantity
-              </label>
-              <input
-                id={`po-max-${o.id}`}
-                type="number"
-                inputMode="numeric"
-                min={1}
-                value={o.maxQty ?? ""}
-                onChange={(e) => update(i, { maxQty: optionalInt(e.target.value) })}
-                placeholder={String(DEFAULT_MAX_QTY)}
-                className={inputClass}
-              />
-            </div>
-            <label className="col-span-2 sm:col-span-1 flex items-center gap-2 h-10 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={o.active}
-                onChange={(e) => update(i, { active: e.target.checked })}
-                className="w-4 h-4 accent-indigo-600"
-              />
-              <span className="text-sm text-gray-700 font-medium">Available to customers</span>
-            </label>
-          </div>
+          <label
+            className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer select-none transition ${
+              o.active
+                ? "border-green-200 bg-green-50"
+                : highlightUnavailable
+                  ? "border-amber-300 bg-amber-50 ring-2 ring-amber-200"
+                  : "border-gray-200 bg-white"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={o.active}
+              onChange={(e) => update(i, { active: e.target.checked })}
+              className="mt-0.5 w-4 h-4 accent-indigo-600 shrink-0"
+            />
+            <span>
+              <span className="block text-sm text-gray-800 font-medium">Available to customers</span>
+              <span className="block text-xs text-gray-500">
+                {o.active
+                  ? "Shown on the sales page and can be ordered."
+                  : "Hidden from the sales page. Tick to let customers order it."}
+              </span>
+            </span>
+          </label>
         </div>
       ))}
 

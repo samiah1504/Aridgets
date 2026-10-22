@@ -6,7 +6,8 @@ import { NIGERIAN_STATES } from "@/lib/constants/states";
 import { sendCAPIEvent } from "@/lib/capi";
 import { sendPushToAll } from "@/lib/push";
 import {
-  quantityBounds,
+  MIN_ORDER_QTY,
+  maxOrderQuantity,
   resolveDeliverySettings,
   toSnapshot,
   validateDeliveryDate,
@@ -110,11 +111,16 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const { min, max } = quantityBounds(option);
+    // Quantity: any whole number from 1 up to the system safeguard. Retired
+    // per-option min/max values that may still be saved are ignored.
+    const maxQty = maxOrderQuantity(option.price);
     const requestedQty = b.quantity;
-    if (typeof requestedQty !== "number" || !Number.isInteger(requestedQty) || requestedQty < min || requestedQty > max) {
+    if (typeof requestedQty !== "number" || !Number.isInteger(requestedQty) || requestedQty < MIN_ORDER_QTY) {
+      return NextResponse.json({ error: "Quantity must be a whole number of 1 or more" }, { status: 400 });
+    }
+    if (requestedQty > maxQty) {
       return NextResponse.json(
-        { error: `Quantity must be a whole number from ${min} to ${max}` },
+        { error: `For orders of more than ${maxQty} please contact us directly` },
         { status: 400 }
       );
     }
