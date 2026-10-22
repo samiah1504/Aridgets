@@ -12,6 +12,8 @@ import KidsToyTheme from "@/components/themes/KidsToyTheme";
 import KidsFashionTheme from "@/components/themes/KidsFashionTheme";
 import OptionsBundlesTheme from "@/components/themes/OptionsBundlesTheme";
 import { resolveDeliverySettings, todayInLagos } from "@/lib/purchaseOptions";
+import { resolveTheme, themeCssVars } from "@/lib/theme";
+import { fontStack, fontVariablesClass } from "@/lib/fonts";
 
 type Params = Promise<{ slug: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -145,7 +147,8 @@ export default async function ProductPage({
     getVariants(product.id),
   ]);
 
-  const theme = product.theme as ProductTheme;
+  // Older pages store only colours + font; resolveTheme fills in the rest
+  const theme = resolveTheme(product.theme as ProductTheme);
   const content = product.content as ProductContent;
   const sections = (product.sections ?? []) as SectionConfig[];
   const templateType = (product.template_type ?? "gadget") as TemplateType;
@@ -192,16 +195,8 @@ export default async function ProductPage({
 
   return (
     <div
-      style={{
-        "--product-primary": theme.primary,
-        "--product-accent": theme.accent,
-        "--product-bg": theme.background,
-        "--product-text": theme.text,
-        "--product-font": theme.font,
-        backgroundColor: theme.background,
-        color: theme.text,
-      } as React.CSSProperties}
-      className="min-h-screen"
+      style={themeCssVars(theme, fontStack(theme.font)) as React.CSSProperties}
+      className={`sp-page min-h-screen ${fontVariablesClass}`}
     >
       <ThemeComponent {...themeProps} />
 

@@ -1,12 +1,28 @@
 @import "tailwindcss";
 
-/* Aridgets product-level theme variables — set inline by the landing page template */
+/* Aridgets product-level theme tokens. Sales pages (and the admin theme
+   preview) set these inline from themeCssVars() in src/lib/theme.ts; the
+   values below are only fallbacks. */
 :root {
   --product-primary: #e63946;
   --product-accent: #f1a208;
   --product-bg: #ffffff;
   --product-text: #1a1a1a;
-  --product-font: "Inter, Arial, sans-serif";
+  --product-font: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --product-on-primary: #ffffff;
+  --product-on-accent: #111111;
+  --product-muted: #5e5e5e;
+  --product-subtle: #858585;
+  --product-surface: #f8f8f8;
+  --product-border: #dddddd;
+  --product-primary-soft: #fdf0f1;
+  --product-primary-line: #f5b0b5;
+  --sp-radius-btn: 12px;
+  --sp-radius-card: 16px;
+  --sp-radius-input: 12px;
+  --sp-card-shadow: none;
+  --sp-card-border: #dddddd;
+  --sp-section-y: 2.5rem;
 }
 
 @theme inline {
@@ -19,4 +35,97 @@
 body {
   background-color: var(--product-bg);
   color: var(--product-text);
+}
+
+/* Sales page theme classes (components layer: utilities can still override) */
+@layer components {
+  .sp-page {
+    font-family: var(--product-font);
+    background-color: var(--product-bg);
+    color: var(--product-text);
+  }
+  .sp-section {
+    padding-top: var(--sp-section-y);
+    padding-bottom: var(--sp-section-y);
+  }
+  .sp-muted { color: var(--product-muted); }
+  .sp-subtle { color: var(--product-subtle); }
+  .sp-surface { background-color: var(--product-surface); }
+  .sp-primary-text { color: var(--product-primary); }
+  .sp-on-primary {
+    background-color: var(--product-primary);
+    color: var(--product-on-primary);
+  }
+  .sp-on-accent {
+    background-color: var(--product-accent);
+    color: var(--product-on-accent);
+  }
+
+  .sp-btn {
+    background-color: var(--product-primary);
+    color: var(--product-on-primary);
+    border-radius: var(--sp-radius-btn);
+    transition: filter 150ms, transform 150ms;
+  }
+  .sp-btn:hover:not(:disabled) { filter: brightness(1.08); }
+  .sp-btn:active:not(:disabled) { transform: scale(0.98); }
+  .sp-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  /* Secondary controls such as quantity steppers */
+  .sp-btn-outline {
+    background-color: var(--product-bg);
+    color: var(--product-text);
+    border: 1px solid var(--product-border);
+    border-radius: var(--sp-radius-btn);
+  }
+  .sp-btn-outline:hover:not(:disabled) { border-color: var(--product-subtle); }
+  .sp-btn-outline:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .sp-card {
+    background-color: var(--product-bg);
+    border: 1px solid var(--sp-card-border);
+    border-radius: var(--sp-radius-card);
+    box-shadow: var(--sp-card-shadow);
+  }
+
+  /* Selectable cards (purchase options, delivery choices) */
+  .sp-choice {
+    background-color: var(--product-bg);
+    border: 2px solid var(--product-border);
+    border-radius: var(--sp-radius-card);
+    box-shadow: var(--sp-card-shadow);
+    transition: border-color 150ms, background-color 150ms;
+  }
+  .sp-choice:hover { border-color: var(--product-subtle); }
+  .sp-choice[data-selected="true"] {
+    border-color: var(--product-primary);
+    background-color: var(--product-primary-soft);
+  }
+  .sp-choice[data-invalid="true"]:not([data-selected="true"]) { border-color: #f87171; }
+
+  .sp-input {
+    background-color: var(--product-bg);
+    color: var(--product-text);
+    border: 1px solid var(--product-border);
+    border-radius: var(--sp-radius-input);
+    transition: border-color 150ms, box-shadow 150ms;
+  }
+  textarea.sp-input { border-radius: min(var(--sp-radius-input), 16px); }
+  .sp-input::placeholder { color: var(--product-subtle); }
+  .sp-input:focus {
+    outline: none;
+    border-color: var(--product-primary);
+    box-shadow: 0 0 0 3px var(--product-primary-soft);
+  }
+  .sp-input[aria-invalid="true"] { border-color: #f87171; }
+  .sp-input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px #fee2e2; }
+
+  .sp-border { border-color: var(--product-border); }
+  .sp-rounded { border-radius: var(--sp-radius-card); }
+  .sp-divide > * + * { border-color: var(--product-border); }
+  /* High-contrast block: page colours swapped */
+  .sp-inverse {
+    background-color: var(--product-text);
+    color: var(--product-bg);
+  }
 }

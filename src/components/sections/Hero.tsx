@@ -26,10 +26,7 @@ export default function Hero({
   return (
     <section className="px-4 py-8 max-w-lg mx-auto">
       {eyebrow && (
-        <p
-          className="text-xs font-bold uppercase tracking-widest mb-3"
-          style={{ color: "var(--product-primary)" }}
-        >
+        <p className="text-xs font-bold uppercase tracking-widest mb-3 sp-primary-text">
           {eyebrow}
         </p>
       )}
@@ -44,25 +41,22 @@ export default function Hero({
             {"★".repeat(Math.min(5, Math.max(0, Math.round(starRating))))}
             {"☆".repeat(5 - Math.min(5, Math.max(0, Math.round(starRating))))}
           </span>
-          <span className="text-sm text-gray-500 font-medium">
+          <span className="text-sm sp-muted font-medium">
             {starRating.toFixed(1)} rating
           </span>
         </div>
       )}
       {subhead && (
-        <p className="text-base text-gray-600 leading-relaxed mb-5">{subhead}</p>
+        <p className="text-base sp-muted leading-relaxed mb-5">{subhead}</p>
       )}
       <div className="flex items-baseline gap-3 mb-5">
-        {pricePrefix && <span className="text-base font-semibold text-gray-500">{pricePrefix}</span>}
-        <span
-          className="text-3xl font-extrabold"
-          style={{ color: "var(--product-primary)" }}
-        >
+        {pricePrefix && <span className="text-base font-semibold sp-muted">{pricePrefix}</span>}
+        <span className="text-3xl font-extrabold sp-primary-text">
           {formatNGN(price)}
         </span>
         {compareAtPrice && compareAtPrice > price && (
           <>
-            <span className="text-lg text-gray-400 line-through">
+            <span className="text-lg sp-subtle line-through">
               {formatNGN(compareAtPrice)}
             </span>
             <span className="text-sm font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">
@@ -73,16 +67,15 @@ export default function Hero({
       </div>
       <a
         href="#order"
-        className="block w-full text-white text-center text-lg font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-transform"
-        style={{ backgroundColor: "var(--product-primary)" }}
+        className="sp-btn block w-full text-center text-lg font-bold py-4 shadow-lg"
       >
         {ctaText ?? "Order Now — Pay on Delivery"}
       </a>
       {trustRow && trustRow.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4 text-sm text-gray-500">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4 text-sm sp-muted">
           {trustRow.map((item, i) => (
             <span key={i} className="flex items-center gap-1">
-              <span className="text-green-500 font-bold">✓</span>
+              <span className="sp-primary-text font-bold">✓</span>
               {item}
             </span>
           ))}

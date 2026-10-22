@@ -25,8 +25,7 @@ export default function KidsToyTheme({
       {/* ── Announcement bar ───────────────────────────────────────────────── */}
       {enabled.has("announcementBar") && content.announcementBar && (
         <div
-          className="text-center py-2.5 px-4 text-sm font-bold"
-          style={{ backgroundColor: "var(--product-accent)", color: "#fff" }}
+          className="text-center py-2.5 px-4 text-sm font-bold sp-on-accent"
         >
           🎉 {content.announcementBar}
         </div>
@@ -43,17 +42,17 @@ export default function KidsToyTheme({
           <div className="max-w-lg mx-auto">
             {/* Age badge */}
             {content.ageRange && (
-              <span className="inline-block bg-white/25 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-4">
+              <span className="inline-block bg-white/25 text-[var(--product-on-primary)] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-4">
                 Ages {content.ageRange}
               </span>
             )}
             {content.eyebrow && !content.ageRange && (
-              <p className="text-white/80 text-sm font-semibold uppercase tracking-widest mb-3">
+              <p className="text-[var(--product-on-primary)]/80 text-sm font-semibold uppercase tracking-widest mb-3">
                 {content.eyebrow}
               </p>
             )}
             {content.headline && (
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight mb-4">
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-[var(--product-on-primary)] leading-tight mb-4">
                 {content.headline}
               </h1>
             )}
@@ -62,7 +61,7 @@ export default function KidsToyTheme({
                 <span className="text-yellow-300 text-xl">
                   {"★".repeat(Math.min(5, Math.max(0, Math.round(content.starRating))))}
                 </span>
-                <span className="text-white/75 text-sm">
+                <span className="text-[var(--product-on-primary)]/75 text-sm">
                   {content.starRating.toFixed(1)} · Happy Kids ✓
                 </span>
               </div>
@@ -82,15 +81,15 @@ export default function KidsToyTheme({
             )}
 
             {content.subhead && (
-              <p className="text-white/85 text-base leading-relaxed mb-6">{content.subhead}</p>
+              <p className="text-[var(--product-on-primary)]/85 text-base leading-relaxed mb-6">{content.subhead}</p>
             )}
 
             <div className="flex items-baseline justify-center gap-3 mb-6">
-              <span className="text-3xl font-extrabold text-white">
+              <span className="text-3xl font-extrabold text-[var(--product-on-primary)]">
                 {formatNGN(product.price)}
               </span>
               {product.compare_at_price && product.compare_at_price > product.price && (
-                <span className="text-xl text-white/50 line-through">
+                <span className="text-xl text-[var(--product-on-primary)]/50 line-through">
                   {formatNGN(product.compare_at_price)}
                 </span>
               )}
@@ -98,8 +97,7 @@ export default function KidsToyTheme({
 
             <a
               href="#order"
-              className="inline-block bg-white font-extrabold text-lg px-8 py-3.5 rounded-3xl shadow-xl active:scale-95 transition-transform"
-              style={{ color: "var(--product-primary)" }}
+              className="inline-block bg-[var(--product-bg)] font-extrabold text-lg px-8 py-3.5 rounded-[var(--sp-radius-btn)] shadow-xl active:scale-95 transition-transform sp-primary-text"
             >
               {content.ctaText ?? "Order Now — Pay on Delivery"} 🛒
             </a>
@@ -107,7 +105,7 @@ export default function KidsToyTheme({
             {content.trustRow && content.trustRow.length > 0 && (
               <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-5">
                 {content.trustRow.map((item, i) => (
-                  <span key={i} className="text-white/80 text-sm flex items-center gap-1">
+                  <span key={i} className="text-[var(--product-on-primary)]/80 text-sm flex items-center gap-1">
                     <span className="text-yellow-300">✓</span> {item}
                   </span>
                 ))}
@@ -119,28 +117,27 @@ export default function KidsToyTheme({
 
       {/* ── Problem ─────────────────────────────────────────────────────────── */}
       {enabled.has("problem") && content.problemText && (
-        <section className="max-w-2xl mx-auto px-4 py-10 text-center">
-          <p className="text-base text-gray-600 leading-relaxed">{content.problemText}</p>
+        <section className="max-w-2xl mx-auto px-4 sp-section text-center">
+          <p className="text-base sp-muted leading-relaxed">{content.problemText}</p>
         </section>
       )}
 
       {/* ── Benefits ────────────────────────────────────────────────────────── */}
       {enabled.has("benefits") && content.benefits && content.benefits.length > 0 && (
-        <section className="max-w-4xl mx-auto px-4 py-10">
-          <h2 className="text-2xl font-extrabold text-center mb-8" style={{ color: "var(--product-primary)" }}>
+        <section className="max-w-4xl mx-auto px-4 sp-section">
+          <h2 className="text-2xl font-extrabold text-center mb-8 sp-primary-text">
             Why Kids Love It ❤️
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {content.benefits.map((b, i) => (
               <div
                 key={i}
-                className="flex items-start gap-4 p-4 rounded-3xl border-2 border-dashed"
-                style={{ borderColor: "var(--product-primary)" + "40" }}
+                className="flex items-start gap-4 p-4 sp-rounded border-2 border-dashed border-[var(--product-primary-line)]"
               >
                 {b.icon && (
                   <span className="text-3xl shrink-0">{b.icon}</span>
                 )}
-                <p className="text-sm text-gray-700 leading-relaxed font-medium">{b.text}</p>
+                <p className="text-sm leading-relaxed font-medium">{b.text}</p>
               </div>
             ))}
           </div>
@@ -150,25 +147,23 @@ export default function KidsToyTheme({
       {/* ── How it works ────────────────────────────────────────────────────── */}
       {enabled.has("howItWorks") && content.howItWorksSteps && content.howItWorksSteps.length > 0 && (
         <section
-          className="px-4 py-10"
-          style={{ backgroundColor: "var(--product-primary)" + "0d" }}
+          className="px-4 sp-section bg-[var(--product-primary-soft)]"
         >
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-2xl font-extrabold text-center mb-8" style={{ color: "var(--product-primary)" }}>
+            <h2 className="text-2xl font-extrabold text-center mb-8 sp-primary-text">
               Super Simple Steps 🌟
             </h2>
             <div className="space-y-5">
               {content.howItWorksSteps.map((step, i) => (
-                <div key={i} className="flex gap-4 items-start bg-white rounded-2xl p-4 shadow-sm">
+                <div key={i} className="flex gap-4 items-start sp-card p-4">
                   <span
-                    className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-extrabold text-lg"
-                    style={{ backgroundColor: "var(--product-accent)" }}
+                    className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-extrabold text-lg sp-on-accent"
                   >
                     {i + 1}
                   </span>
                   <div>
-                    <p className="font-extrabold text-gray-800">{step.title}</p>
-                    {step.description && <p className="text-sm text-gray-500 mt-1 leading-relaxed">{step.description}</p>}
+                    <p className="font-extrabold">{step.title}</p>
+                    {step.description && <p className="text-sm sp-muted mt-1 leading-relaxed">{step.description}</p>}
                   </div>
                 </div>
               ))}
@@ -179,8 +174,8 @@ export default function KidsToyTheme({
 
       {/* ── Media gallery ───────────────────────────────────────────────────── */}
       {enabled.has("mediaGallery") && (galleryImgs.length > 1 || videos.length > 0) && (
-        <section className="max-w-5xl mx-auto px-4 py-10">
-          <h2 className="text-2xl font-extrabold text-center mb-6" style={{ color: "var(--product-primary)" }}>
+        <section className="max-w-5xl mx-auto px-4 sp-section">
+          <h2 className="text-2xl font-extrabold text-center mb-6 sp-primary-text">
             See It In Action 📸
           </h2>
           {galleryImgs.length > 1 && (
@@ -209,13 +204,13 @@ export default function KidsToyTheme({
 
       {/* ── Features & Specs ────────────────────────────────────────────────── */}
       {enabled.has("featuresSpecs") && content.featuresSpecs && content.featuresSpecs.length > 0 && (
-        <section className="max-w-3xl mx-auto px-4 py-10">
-          <h2 className="text-2xl font-extrabold text-center mb-6" style={{ color: "var(--product-primary)" }}>
+        <section className="max-w-3xl mx-auto px-4 sp-section">
+          <h2 className="text-2xl font-extrabold text-center mb-6 sp-primary-text">
             What&apos;s Included 🎁
           </h2>
           <ul className="space-y-3">
             {content.featuresSpecs.map((item, i) => (
-              <li key={i} className="flex items-start gap-3 text-sm text-gray-700">
+              <li key={i} className="flex items-start gap-3 text-sm">
                 <span className="text-lg shrink-0" style={{ color: "var(--product-accent)" }}>⭐</span>
                 {item}
               </li>
