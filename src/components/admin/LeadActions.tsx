@@ -22,8 +22,15 @@ const NEXT_ACTIONS: Record<LeadStatus, NextAction[]> = {
     { label: "Cancel", status: "cancelled", style: "bg-gray-200 hover:bg-gray-300 text-gray-700" },
   ],
   confirmed: [
+    { label: "Mark Delivered", status: "delivered", style: "bg-blue-600 hover:bg-blue-700 text-white" },
     { label: "Cancel Order", status: "cancelled", style: "bg-gray-200 hover:bg-gray-300 text-gray-700" },
   ],
+  // Paid is set by recording the payment (see the Payment panel), never directly
+  delivered: [
+    { label: "Back to Confirmed", status: "confirmed", style: "bg-gray-200 hover:bg-gray-300 text-gray-700" },
+    { label: "Cancel Order", status: "cancelled", style: "bg-gray-200 hover:bg-gray-300 text-gray-700" },
+  ],
+  paid: [],
   not_picking_calls: [
     { label: "Confirm ✓", status: "confirmed", style: "bg-green-600 hover:bg-green-700 text-white" },
     { label: "Not Buying", status: "not_buying", style: "bg-red-100 hover:bg-red-200 text-red-700" },

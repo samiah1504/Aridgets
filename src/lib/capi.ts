@@ -2,6 +2,8 @@ import { createHash } from "crypto";
 import { createServiceClient } from "@/lib/supabase/server";
 
 const API_VERSION = process.env.META_GRAPH_API_VERSION ?? "v21.0";
+// Overridable only for local testing against a fake Graph API
+const GRAPH_BASE = (process.env.META_GRAPH_BASE_URL ?? "https://graph.facebook.com").replace(/\/$/, "");
 
 function sha256(value: string): string {
   return createHash("sha256").update(value.trim().toLowerCase()).digest("hex");
@@ -28,6 +30,11 @@ export interface CAPIEventPayload {
   currency?: string;
   value?: number;
   contentName?: string;
+  /** Purchase details (Meta custom_data: order_id, content_ids, contents, num_items) */
+  orderId?: string;
+  contentIds?: string[];
+  contents?: Array<{ id: string; quantity: number; item_price: number }>;
+  numItems?: number;
   /** When provided, the send result is recorded in tracking_events */
   log?: { productId: string; leadId?: string | null; test?: boolean };
 }
@@ -55,16 +62,21 @@ async function logEvent(
   }
 }
 
-export async function sendCAPIEvent(payload: CAPIEventPayload): Promise<void> {
-  const url = `https://graph.facebook.com/${API_VERSION}/${payload.pixelId}/events`;
+/** Sends one event. Throws on failure; resolves with whether Meta acknowledged receipt. */
+export async function sendCAPIEvent(payload: CAPIEventPayload): Promise<{ confirmed: boolean }> {
+  const url = `${GRAPH_BASE}/${API_VERSION}/${payload.pixelId}/events`;
 
   const userData: Record<string, unknown> = {};
-  if (payload.phone) userData.ph = [sha256(payload.phone)];
+  // Meta normalisation: phone = digits only including country code (no "+")
+  const phoneDigits = payload.phone?.replace(/\D/g, "");
+  if (phoneDigits) userData.ph = [sha256(phoneDigits)];
   if (payload.email) userData.em = [sha256(payload.email)];
   if (payload.firstName) userData.fn = [sha256(payload.firstName)];
   if (payload.lastName) userData.ln = [sha256(payload.lastName)];
   if (payload.city) userData.ct = [sha256(payload.city.replace(/[^a-zA-Z]/g, ""))];
   if (payload.state) userData.st = [sha256(payload.state.replace(/[^a-zA-Z]/g, ""))];
+  // All Aridgets customers are in Nigeria (ISO 3166-1 alpha-2, lowercase)
+  if (payload.phone || payload.state) userData.country = [sha256("ng")];
   if (payload.clientIp) userData.client_ip_address = payload.clientIp;
   if (payload.clientUserAgent) userData.client_user_agent = payload.clientUserAgent;
   if (payload.fbp) userData.fbp = payload.fbp;
@@ -77,6 +89,13 @@ export async function sendCAPIEvent(payload: CAPIEventPayload): Promise<void> {
     customData.content_type = "product";
     customData.content_name = payload.contentName;
   }
+  if (payload.orderId) customData.order_id = payload.orderId;
+  if (payload.contentIds?.length) {
+    customData.content_ids = payload.contentIds;
+    customData.content_type = "product";
+  }
+  if (payload.contents?.length) customData.contents = payload.contents;
+  if (payload.numItems !== undefined) customData.num_items = payload.numItems;
 
   const body: Record<string, unknown> = {
     data: [
@@ -125,4 +144,5 @@ export async function sendCAPIEvent(payload: CAPIEventPayload): Promise<void> {
     confirmed = false;
   }
   await logEvent(payload, confirmed ? "confirmed" : "sent", null);
+  return { confirmed };
 }

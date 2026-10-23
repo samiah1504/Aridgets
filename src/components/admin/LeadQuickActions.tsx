@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ContactButtons from "./ContactButtons";
+import { LEAD_STATUSES } from "@/lib/leadStatus";
 import type { LeadStatus } from "@/types";
 
 interface Props {
@@ -18,13 +19,9 @@ interface Props {
   actorName: string | null;
 }
 
-const STATUS_OPTIONS: Array<{ value: LeadStatus; label: string }> = [
-  { value: "new", label: "New Lead" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "not_buying", label: "Not Buying" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "not_picking_calls", label: "Not Picking Calls" },
-];
+// "Paid" is only reached by recording a payment on the order page, so it is
+// listed only to display an order that is already paid.
+const STATUS_OPTIONS = LEAD_STATUSES.map((s) => ({ value: s.value, label: s.label }));
 
 export default function LeadQuickActions({
   leadId,
@@ -42,12 +39,16 @@ export default function LeadQuickActions({
   async function changeStatus(newStatus: string) {
     if (newStatus === status) return;
     setUpdating(true);
-    await fetch(`/api/leads/${leadId}`, {
+    const res = await fetch(`/api/leads/${leadId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
     setUpdating(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      window.alert(data.error ?? "Could not update the status.");
+    }
     router.refresh();
   }
 
@@ -73,7 +74,7 @@ export default function LeadQuickActions({
           className="text-xs border border-gray-200 rounded-lg px-1.5 py-1.5 bg-white text-gray-600 outline-none disabled:opacity-50"
           title="Change status"
         >
-          {STATUS_OPTIONS.map((o) => (
+          {STATUS_OPTIONS.filter((o) => o.value !== "paid" || status === "paid").map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
