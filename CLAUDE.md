@@ -18,8 +18,8 @@ Full build spec: `BUILD_BRIEF.md`
 - Phone: validate with `isValidNGPhone()` and store normalised via `normaliseNGPhone()`.
 - States: use `NIGERIAN_STATES` from `src/lib/constants/states.ts` — never hardcode.
 - Order numbers: `{ORDER_PREFIX}-{6-digit zero-padded}`, prefix from `settings` table.
-- CAPI Purchase fires only when a lead transitions to `confirmed` — never on form submit. Guard against double-fire (`event_id_purchase` must be null).
-- Lead pipeline: `new` → `confirmed` (responsibility ends here) | drop statuses: `not_buying`, `cancelled`, `not_picking_calls`. No fulfilment statuses — Aridgets is lead-gen, not order fulfilment. `confirmed_at`/`dropped_at` timestamp the transitions.
+- CAPI Purchase fires only when an order becomes `paid` (its recorded payments cover the total) — never on form submit, confirm or deliver. Payments go through the `record_lead_payment()` DB function (row lock, idempotency key, `leads.mark_paid` permission); the event is sent by `deliverPurchaseEvent()` in `src/lib/purchaseEvent.ts` with the order's single `event_id_purchase`, reused on every retry. Delivery state lives in `leads.purchase_event_*`. Orders whose Purchase was sent at confirmation (before this rule) are marked `confirmed_legacy` and never re-sent.
+- Lead pipeline: `new` → `confirmed` → `delivered` → `paid` | drop statuses: `not_buying`, `cancelled`, `not_picking_calls`. `confirmed_at`/`delivered_at`/`paid_at`/`dropped_at` timestamp the transitions. `paid` is reached only by recording payment (partial payments allowed; `amount_paid` vs `total`). Status labels/colours: `src/lib/leadStatus.ts`.
 - RBAC: permissions live on `roles.permissions` (text[] of keys from `src/lib/permissions.ts`; `*` = all). RLS enforces via `has_perm()` in Postgres. Server pages guard with `requirePerm()` from `src/lib/auth.ts`; UI gates with `hasPerm()`. Customer-support visibility is scoped by `product_assignments`. Important actions log to `audit_log` via DB triggers.
 
 ## Build phases

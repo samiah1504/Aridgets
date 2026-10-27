@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { getStaff } from "@/lib/auth";
 import { hasPerm } from "@/lib/permissions";
-import { SITE_URL } from "@/lib/config";
-import { sendCAPIEvent } from "@/lib/capi";
+import { DROP_STATUSES, LEAD_STATUSES } from "@/lib/leadStatus";
 import type { LeadStatus } from "@/types";
 import type { Database } from "@/types/database";
 
@@ -11,16 +10,11 @@ type LeadUpdate = Database["public"]["Tables"]["leads"]["Update"];
 
 type Params = Promise<{ id: string }>;
 
-const VALID_STATUSES: LeadStatus[] = [
-  "new",
-  "confirmed",
-  "not_buying",
-  "cancelled",
-  "not_picking_calls",
-];
+const VALID_STATUSES = LEAD_STATUSES.map((s) => s.value);
 
-const DROP_STATUSES: LeadStatus[] = ["not_buying", "cancelled", "not_picking_calls"];
-
+// Status and notes updates. The Meta Purchase event is NOT sent here: it is
+// sent only when an order becomes Paid by recording its payment
+// (POST /api/leads/[id]/payments). Confirming or delivering never sends it.
 export async function PATCH(request: NextRequest, { params }: { params: Params }) {
   const { id } = await params;
 
@@ -61,6 +55,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
       { status: 403 }
     );
   }
+  if (newStatus === "paid" && !hasPerm(staff.permissions, "leads.mark_paid")) {
+    return NextResponse.json(
+      { error: "You do not have permission to mark orders as paid" },
+      { status: 403 }
+    );
+  }
   if (call_notes !== undefined && !hasPerm(staff.permissions, "leads.edit_notes")) {
     return NextResponse.json(
       { error: "You do not have permission to edit lead notes" },
@@ -68,12 +68,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     );
   }
 
-  // Fetch current lead
+  // Fetch current lead (RLS: only leads this user can see)
   const { data: lead, error: fetchErr } = await supabase
     .from("leads")
-    .select(
-      "id, status, product_id, event_id_purchase, confirmed_at, dropped_at, phone, email, name, city, state, is_test, client_ip, client_user_agent, fbp, fbc, total"
-    )
+    .select("id, status, confirmed_at, delivered_at, dropped_at, total, amount_paid")
     .eq("id", id)
     .single();
 
@@ -82,6 +80,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
   }
 
   const fromStatus = lead.status as LeadStatus;
+
+  // Paid means the full amount has been recorded. An order only gets there by
+  // recording its payment; setting it back to Paid later (e.g. after a status
+  // mistake) is allowed once it is fully paid, and never re-sends Purchase.
+  if (newStatus === "paid" && fromStatus !== "paid" && lead.amount_paid < lead.total) {
+    return NextResponse.json(
+      { error: "Record the customer's payment to mark this order as Paid" },
+      { status: 400 }
+    );
+  }
 
   // Build update payload
   const update: LeadUpdate = {};
@@ -92,26 +100,26 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
 
   if (newStatus) {
     const s = newStatus as LeadStatus;
+    const now = new Date().toISOString();
     update.status = s;
-    if (s === "confirmed" && !lead.confirmed_at) {
-      update.confirmed_at = new Date().toISOString();
-    }
+    if (s === "confirmed" && !lead.confirmed_at) update.confirmed_at = now;
+    if (s === "delivered" && !lead.delivered_at) update.delivered_at = now;
     // dropped_at records the most recent drop; cleared when the lead re-enters the pipeline
     if (DROP_STATUSES.includes(s)) {
-      update.dropped_at = new Date().toISOString();
+      update.dropped_at = now;
     } else if (lead.dropped_at) {
       update.dropped_at = null;
     }
   }
 
-  // Apply update
+  // Apply update (the database also enforces the Paid and payment-field rules)
   const { error: updateErr } = await supabase
     .from("leads")
     .update(update)
     .eq("id", id);
 
   if (updateErr) {
-    return NextResponse.json({ error: updateErr.message }, { status: 500 });
+    return NextResponse.json({ error: updateErr.message }, { status: 400 });
   }
 
   // Log status history if status changed
@@ -122,61 +130,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
       to_status: newStatus,
       changed_by: user.id,
     });
-  }
-
-  // Fire CAPI Purchase exactly once per lead. The event ID is claimed with an
-  // atomic conditional update — only the request that wins the claim sends the
-  // event, so concurrent double-confirms can never fire twice.
-  // (Skipped when the product has since been deleted.)
-  if (newStatus === "confirmed" && !lead.event_id_purchase && lead.product_id) {
-    const eventIdPurchase = crypto.randomUUID();
-    const { data: claimed } = await supabase
-      .from("leads")
-      .update({ event_id_purchase: eventIdPurchase })
-      .eq("id", id)
-      .is("event_id_purchase", null)
-      .select("id");
-
-    if (!claimed || claimed.length === 0) {
-      // Another request already claimed the Purchase for this lead
-      return NextResponse.json({ ok: true });
-    }
-
-    const serviceClient = createServiceClient();
-    const { data: product } = await serviceClient
-      .from("products")
-      .select("name, slug, pixel_id, capi_access_token, capi_test_event_code")
-      .eq("id", lead.product_id)
-      .single();
-
-    if (product?.pixel_id && product?.capi_access_token) {
-      const nameParts = (lead.name ?? "").split(/\s+/);
-      // Awaited: on serverless the function freezes once the response is sent —
-      // an un-awaited send can be killed mid-flight and never reach Meta.
-      await sendCAPIEvent({
-        pixelId: product.pixel_id,
-        accessToken: product.capi_access_token,
-        testEventCode: product.capi_test_event_code,
-        eventName: "Purchase",
-        eventId: eventIdPurchase,
-        eventTime: Math.floor(Date.now() / 1000),
-        sourceUrl: `${SITE_URL}/p/${product.slug}`,
-        phone: lead.phone,
-        email: lead.email,
-        firstName: nameParts[0] ?? null,
-        lastName: nameParts.length > 1 ? nameParts[nameParts.length - 1] : null,
-        city: lead.city,
-        state: lead.state,
-        clientIp: lead.client_ip,
-        clientUserAgent: lead.client_user_agent,
-        fbp: lead.fbp,
-        fbc: lead.fbc,
-        currency: "NGN",
-        value: lead.total,
-        contentName: product.name,
-        log: { productId: lead.product_id, leadId: lead.id, test: lead.is_test },
-      }).catch((err) => console.error("CAPI Purchase:", err));
-    }
   }
 
   return NextResponse.json({ ok: true });

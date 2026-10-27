@@ -4,36 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePerm, hasPerm } from "@/lib/auth";
 import { formatNGN } from "@/lib/utils/currency";
 import LeadQuickActions from "@/components/admin/LeadQuickActions";
+import { LEAD_STATUSES, STATUS_BADGE as STATUS_STYLES, STATUS_LABELS } from "@/lib/leadStatus";
 import type { LeadStatus } from "@/types";
+
+const TABS: Array<{ value: string; label: string }> = [
+  { value: "", label: "All" },
+  ...LEAD_STATUSES.map((s) => ({ value: s.value, label: s.value === "new" ? "New" : s.label })),
+];
 
 export const metadata: Metadata = { title: "Leads" };
 
 type SearchParams = Promise<{ status?: string }>;
-
-const STATUS_LABELS: Record<LeadStatus, string> = {
-  new: "New Lead",
-  confirmed: "Confirmed",
-  not_buying: "Not Buying",
-  cancelled: "Cancelled",
-  not_picking_calls: "Not Picking Calls",
-};
-
-const STATUS_STYLES: Record<LeadStatus, string> = {
-  new: "bg-yellow-100 text-yellow-700",
-  confirmed: "bg-green-100 text-green-700",
-  not_buying: "bg-red-100 text-red-700",
-  cancelled: "bg-gray-200 text-gray-600",
-  not_picking_calls: "bg-gray-100 text-gray-500",
-};
-
-const TABS: Array<{ value: string; label: string }> = [
-  { value: "", label: "All" },
-  { value: "new", label: "New" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "not_buying", label: "Not Buying" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "not_picking_calls", label: "Not Picking Calls" },
-];
 
 export default async function LeadsPage({ searchParams }: { searchParams: SearchParams }) {
   const staff = await requirePerm(["leads.view_all", "leads.view_assigned"]);

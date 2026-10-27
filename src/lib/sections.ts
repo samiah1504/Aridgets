@@ -18,3 +18,25 @@ export function displaySections(
   }
   return keys;
 }
+
+// Where the extra in-page order blocks go: after the first enabled section
+// of each preference list. Never directly before the order form (it would
+// just repeat it) and never twice in the same spot.
+const ORDER_CTA_SLOTS: string[][] = [
+  ["mediaGallery", "benefits", "problem"],                  // after seeing the product
+  ["socialProof", "guarantee", "urgency", "howItWorks", "featuresSpecs"], // after the reassurance
+];
+
+export function orderCtaAnchors(keys: string[]): string[] {
+  const formAt = keys.indexOf("orderForm");
+  if (formAt === -1) return [];
+  const anchors: string[] = [];
+  for (const slot of ORDER_CTA_SLOTS) {
+    const key = slot.find((k) => {
+      const i = keys.indexOf(k);
+      return i !== -1 && i < formAt - 1 && !anchors.includes(k);
+    });
+    if (key) anchors.push(key);
+  }
+  return anchors;
+}

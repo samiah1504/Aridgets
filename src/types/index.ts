@@ -64,6 +64,8 @@ export type ProductStatus = "draft" | "live" | "archived";
 export type LeadStatus =
   | "new"
   | "confirmed"
+  | "delivered"
+  | "paid"
   | "not_buying"
   | "cancelled"
   | "not_picking_calls";

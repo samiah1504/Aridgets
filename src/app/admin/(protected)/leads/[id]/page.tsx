@@ -9,25 +9,11 @@ import LeadActions from "@/components/admin/LeadActions";
 import AssignLead from "@/components/admin/AssignLead";
 import ContactButtons from "@/components/admin/ContactButtons";
 import FollowUpPanel from "@/components/admin/FollowUpPanel";
+import PaymentPanel from "@/components/admin/PaymentPanel";
+import { STATUS_BADGE as STATUS_STYLES, STATUS_LABELS } from "@/lib/leadStatus";
 import type { LeadStatus } from "@/types";
 
 type Params = Promise<{ id: string }>;
-
-const STATUS_STYLES: Record<LeadStatus, string> = {
-  new: "bg-yellow-100 text-yellow-700",
-  confirmed: "bg-green-100 text-green-700",
-  not_buying: "bg-red-100 text-red-700",
-  cancelled: "bg-gray-200 text-gray-600",
-  not_picking_calls: "bg-gray-100 text-gray-500",
-};
-
-const STATUS_LABELS: Record<LeadStatus, string> = {
-  new: "New Lead",
-  confirmed: "Confirmed",
-  not_buying: "Not Buying",
-  cancelled: "Cancelled",
-  not_picking_calls: "Not Picking Calls",
-};
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { id } = await params;
@@ -43,6 +29,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
   const canChangeStatus = hasPerm(staff.permissions, "leads.change_status");
   const canEditNotes = hasPerm(staff.permissions, "leads.edit_notes");
   const canAssign = hasPerm(staff.permissions, "leads.assign");
+  const canMarkPaid = hasPerm(staff.permissions, "leads.mark_paid");
   const supabase = await createClient();
 
   const { data: lead } = await supabase
@@ -57,7 +44,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
     ? `lead_id.eq.${id},session_id.eq.${lead.tracking_session_id}`
     : `lead_id.eq.${id}`;
 
-  const [{ data: history }, { data: activities }, { data: trackingEvents }] = await Promise.all([
+  const [{ data: history }, { data: activities }, { data: trackingEvents }, { data: payments }] = await Promise.all([
     supabase
       .from("lead_status_history")
       .select("id, from_status, to_status, note, created_at")
@@ -74,7 +61,23 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
       .or(trackingFilter)
       .order("created_at", { ascending: false })
       .limit(50),
+    supabase
+      .from("lead_payments")
+      .select("id, amount, note, recorded_by, created_at")
+      .eq("lead_id", id)
+      .order("created_at", { ascending: true }),
   ]);
+
+  // Names of staff who recorded payments / marked the order paid
+  const staffIds = [...new Set([...(payments ?? []).map((p) => p.recorded_by), lead.paid_by].filter(Boolean))] as string[];
+  const { data: staffNames } = staffIds.length
+    ? await supabase.from("profiles").select("id, full_name, email").in("id", staffIds)
+    : { data: [] as { id: string; full_name: string | null; email: string | null }[] };
+  const nameOf = (uid: string | null) => {
+    if (!uid) return null;
+    const p = staffNames?.find((x) => x.id === uid);
+    return p?.full_name || p?.email || null;
+  };
 
   // Staff list for the assignment control (only when the viewer can assign)
   const { data: assignableStaff } = canAssign
@@ -429,6 +432,26 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
 
         {/* Right: Actions */}
         <div className="space-y-4 h-fit">
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <PaymentPanel
+              leadId={lead.id}
+              status={status}
+              total={lead.total}
+              amountPaid={lead.amount_paid}
+              paidAt={lead.paid_at}
+              paidByName={nameOf(lead.paid_by)}
+              payments={(payments ?? []).map((p) => ({ ...p, recorded_by_name: nameOf(p.recorded_by) }))}
+              purchaseEvent={{
+                status: lead.purchase_event_status,
+                value: lead.purchase_event_value,
+                attempts: lead.purchase_event_attempts,
+                error: lead.purchase_event_error,
+                sentAt: lead.purchase_event_sent_at,
+                trigger: lead.purchase_event_trigger,
+              }}
+              canMarkPaid={canMarkPaid}
+            />
+          </div>
           {(canChangeStatus || canEditNotes) && (
             <div className="bg-white rounded-2xl border border-gray-100 p-5">
               <LeadActions

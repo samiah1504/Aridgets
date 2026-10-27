@@ -33,6 +33,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: "leads.edit_notes", label: "Edit lead notes" },
       { key: "leads.change_status", label: "Change lead status" },
       { key: "leads.assign", label: "Assign leads to staff" },
+      { key: "leads.mark_paid", label: "Record payments & mark orders Paid" },
       { key: "leads.export", label: "Export leads" },
       { key: "customers.view_contact", label: "View customer phone & address" },
     ],

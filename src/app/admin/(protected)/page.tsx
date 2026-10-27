@@ -4,33 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getStaff, hasPerm, hasAnyPerm } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { formatNGN } from "@/lib/utils/currency";
+import { LEAD_STATUSES, STATUS_BADGE, STATUS_LABELS } from "@/lib/leadStatus";
 import type { LeadStatus } from "@/types";
 
+const FUNNEL = LEAD_STATUSES.map((s) => ({ status: s.value, label: s.label, color: s.bar }));
+
 export const metadata: Metadata = { title: "Dashboard" };
-
-const FUNNEL: Array<{ status: LeadStatus; label: string; color: string }> = [
-  { status: "new", label: "New Lead", color: "bg-yellow-500" },
-  { status: "confirmed", label: "Confirmed", color: "bg-green-500" },
-  { status: "not_buying", label: "Not Buying", color: "bg-red-400" },
-  { status: "cancelled", label: "Cancelled", color: "bg-gray-400" },
-  { status: "not_picking_calls", label: "Not Picking Calls", color: "bg-gray-300" },
-];
-
-const STATUS_BADGE: Record<LeadStatus, string> = {
-  new: "bg-yellow-100 text-yellow-700",
-  confirmed: "bg-green-100 text-green-700",
-  not_buying: "bg-red-100 text-red-700",
-  cancelled: "bg-gray-200 text-gray-600",
-  not_picking_calls: "bg-gray-100 text-gray-500",
-};
-
-const STATUS_LABELS: Record<LeadStatus, string> = {
-  new: "New Lead",
-  confirmed: "Confirmed",
-  not_buying: "Not Buying",
-  cancelled: "Cancelled",
-  not_picking_calls: "Not Picking Calls",
-};
 
 export default async function DashboardPage() {
   const staff = await getStaff();
@@ -64,7 +43,9 @@ export default async function DashboardPage() {
 
   const todayLeads = leads.filter((l) => new Date(l.created_at) >= todayStart).length;
   const weekLeads = leads.filter((l) => new Date(l.created_at) >= weekStart).length;
-  const confirmedLeads = leads.filter((l) => l.status === "confirmed");
+  // Delivered and Paid orders were confirmed first
+  const reachedConfirmed = (status: string) => status === "confirmed" || status === "delivered" || status === "paid";
+  const confirmedLeads = leads.filter((l) => reachedConfirmed(l.status));
   const conversionRate =
     leads.length > 0 ? ((confirmedLeads.length / leads.length) * 100).toFixed(1) : "0.0";
 
@@ -76,7 +57,7 @@ export default async function DashboardPage() {
 
   const productStats = (products ?? []).map((p) => {
     const pLeads = leads.filter((l) => l.product_id === p.id);
-    const pConfirmed = pLeads.filter((l) => l.status === "confirmed");
+    const pConfirmed = pLeads.filter((l) => reachedConfirmed(l.status));
     return {
       ...p,
       leadCount: pLeads.length,
@@ -86,7 +67,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
+        <Link href="/admin/analytics" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+          Revenue & product analytics →
+        </Link>
+      </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

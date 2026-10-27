@@ -1,6 +1,6 @@
 import { APP_NAME } from "@/lib/config";
 import { activePurchaseOptions, lowestPrice } from "@/lib/purchaseOptions";
-import { displaySections } from "@/lib/sections";
+import { displaySections, orderCtaAnchors } from "@/lib/sections";
 import AnnouncementBar from "@/components/sections/AnnouncementBar";
 import Hero from "@/components/sections/Hero";
 import Problem from "@/components/sections/Problem";
@@ -13,6 +13,7 @@ import SocialProof from "@/components/sections/SocialProof";
 import Urgency from "@/components/sections/Urgency";
 import Guarantee from "@/components/sections/Guarantee";
 import FAQ from "@/components/sections/FAQ";
+import OrderCta from "@/components/sections/OrderCta";
 import VariantAwareOrderForm from "./VariantAwareOrderForm";
 import type { ThemeProps } from "./GadgetTheme";
 
@@ -87,10 +88,43 @@ export default function OptionsBundlesTheme({
     ),
   };
 
+  // Two extra order blocks between the content, besides the hero button and
+  // the order form at the bottom
+  const keys = displaySections(sections, "options_bundles");
+  const [ctaAfterProduct, ctaAfterProof] = orderCtaAnchors(keys);
+  const ctaProps = { options: purchaseOptions, ctaText: content.ctaText, fromPrice, pricesVary };
+  const orderBlocks: Record<string, React.ReactNode> = {
+    ...(ctaAfterProduct && {
+      [ctaAfterProduct]: (
+        <OrderCta
+          {...ctaProps}
+          heading={content.purchaseOptionsHeading || "Choose your option"}
+          sub="Tap an option to order — pay when it's delivered."
+        />
+      ),
+    }),
+    ...(ctaAfterProof && {
+      [ctaAfterProof]: (
+        <OrderCta
+          {...ctaProps}
+          variant="compact"
+          heading="Ready to order?"
+          sub="It takes less than a minute. No payment until delivery."
+          trustRow={content.trustRow}
+        />
+      ),
+    }),
+  };
+
   return (
     <>
-      {displaySections(sections, "options_bundles").map((key) =>
-        sectionMap[key] ? <div key={key}>{sectionMap[key]}</div> : null
+      {keys.map((key) =>
+        sectionMap[key] ? (
+          <div key={key}>
+            {sectionMap[key]}
+            {orderBlocks[key]}
+          </div>
+        ) : null
       )}
       <footer className="text-center py-8 text-xs opacity-50 px-4 space-y-1">
         {content.footerText && <p>{content.footerText}</p>}

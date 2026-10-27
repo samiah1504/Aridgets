@@ -17,6 +17,8 @@ import type {
   DeliveryPreference,
 } from "./index";
 
+export type PurchaseEventStatus = "pending" | "sent" | "failed";
+
 export type Database = {
   public: {
     Tables: {
@@ -317,6 +319,19 @@ export type Database = {
           purchase_option: PurchaseOptionSnapshot | null;
           delivery_preference: DeliveryPreference | null;
           delivery_date: string | null;
+          delivered_at: string | null;
+          amount_paid: number;
+          payment_currency: string;
+          paid_at: string | null;
+          paid_by: string | null;
+          purchase_event_status: PurchaseEventStatus | null;
+          purchase_event_value: number | null;
+          purchase_event_attempts: number;
+          purchase_event_last_attempt_at: string | null;
+          purchase_event_locked_until: string | null;
+          purchase_event_sent_at: string | null;
+          purchase_event_error: string | null;
+          purchase_event_trigger: string | null;
         };
         Insert: {
           id?: string;
@@ -364,6 +379,13 @@ export type Database = {
           dropped_at?: string | null;
           follow_up_at?: string | null;
           last_contacted_at?: string | null;
+          delivered_at?: string | null;
+          purchase_event_status?: PurchaseEventStatus | null;
+          purchase_event_attempts?: number;
+          purchase_event_last_attempt_at?: string | null;
+          purchase_event_locked_until?: string | null;
+          purchase_event_sent_at?: string | null;
+          purchase_event_error?: string | null;
         };
         Relationships: [
           {
@@ -641,6 +663,21 @@ export type Database = {
         ];
       };
 
+      lead_payments: {
+        Row: {
+          id: string;
+          lead_id: string;
+          amount: number;
+          currency: string;
+          note: string | null;
+          recorded_by: string | null;
+          idempotency_key: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       lead_status_history: {
         Row: {
           id: string;
@@ -726,6 +763,23 @@ export type Database = {
       generate_order_number: {
         Args: Record<string, never>;
         Returns: string;
+      };
+      claim_purchase_event: {
+        Args: { p_lead_id: string; p_lock_seconds?: number };
+        Returns: Database["public"]["Tables"]["leads"]["Row"][];
+      };
+      record_lead_payment: {
+        Args: { p_lead_id: string; p_amount: number; p_idempotency_key: string; p_note?: string | null };
+        Returns: {
+          lead_id: string;
+          status: LeadStatus;
+          total: number;
+          amount_paid: number;
+          outstanding: number;
+          became_paid: boolean;
+          purchase_event_status: PurchaseEventStatus | null;
+          duplicate: boolean;
+        }[];
       };
     };
     Enums: Record<string, never>;
