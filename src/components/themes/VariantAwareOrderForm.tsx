@@ -6,6 +6,7 @@ import { SERIOUS_BUYER_DEFAULTS } from "@/lib/config";
 import { getTrackingSession, beacon } from "@/components/MetaPixel";
 import { formatNGN } from "@/lib/utils/currency";
 import { isValidNGPhone } from "@/lib/utils/phone";
+import { CHOOSE_OPTION_EVENT } from "@/components/sections/OrderCta";
 import {
   formatDeliveryDate,
   latestDeliveryDate,
@@ -181,6 +182,23 @@ export default function VariantAwareOrderForm({
     setQtyText(String(MIN_ORDER_QTY));
     setErrors((e) => ({ ...e, purchaseOption: "" }));
   }
+
+  // An option tapped in an order block higher up the page is pre-selected here
+  useEffect(() => {
+    if (!purchaseOptions?.length) return;
+    const onChoose = (e: Event) => {
+      const id = (e as CustomEvent<{ optionId: string }>).detail?.optionId;
+      const option = purchaseOptions.find((o) => o.id === id);
+      if (!option) return;
+      setErrors((prev) => ({ ...prev, purchaseOption: "" }));
+      if (option.id === selectedOptionId) return;
+      setSelectedOptionId(option.id);
+      setQuantity(MIN_ORDER_QTY);
+      setQtyText(String(MIN_ORDER_QTY));
+    };
+    window.addEventListener(CHOOSE_OPTION_EVENT, onChoose);
+    return () => window.removeEventListener(CHOOSE_OPTION_EVENT, onChoose);
+  }, [purchaseOptions, selectedOptionId]);
 
   function changeOptionQuantity(next: number, maxQty: number) {
     const q = Math.min(maxQty, Math.max(MIN_ORDER_QTY, next));
