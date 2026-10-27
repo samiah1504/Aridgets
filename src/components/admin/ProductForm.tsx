@@ -848,7 +848,7 @@ export default function ProductForm({ product: initial, permissions }: Props) {
     Media: (
       <div>
         <p className="text-sm text-gray-500 mb-5">
-          Add images and videos for this product. Set one image as the Hero to show it first in the gallery.
+          Add images and videos for this product. Mark items “Top of page” to show them first — on the Product Options & Bundles template, all of them (pictures and videos) open the page above the headline.
           Changes take effect immediately — no need to click Save.
         </p>
         <MediaManager productId={product.id} />
