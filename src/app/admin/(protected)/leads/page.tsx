@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { requirePerm, hasPerm } from "@/lib/auth";
 import { formatNGN } from "@/lib/utils/currency";
 import LeadQuickActions from "@/components/admin/LeadQuickActions";
+import LeadProductFilter from "@/components/admin/LeadProductFilter";
 import { LEAD_STATUSES, STATUS_BADGE as STATUS_STYLES, STATUS_LABELS } from "@/lib/leadStatus";
 import type { LeadStatus } from "@/types";
 
@@ -12,44 +13,107 @@ const TABS: Array<{ value: string; label: string }> = [
   ...LEAD_STATUSES.map((s) => ({ value: s.value, label: s.value === "new" ? "New" : s.label })),
 ];
 
+const PAGE_SIZE = 50;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const metadata: Metadata = { title: "Leads" };
 
-type SearchParams = Promise<{ status?: string }>;
+type SearchParams = Promise<{ status?: string; product?: string; page?: string }>;
+
+function leadsHref(params: { product?: string; status?: string; page?: number }) {
+  const qs = new URLSearchParams();
+  if (params.product) qs.set("product", params.product);
+  if (params.status) qs.set("status", params.status);
+  if (params.page && params.page > 1) qs.set("page", String(params.page));
+  const s = qs.toString();
+  return s ? `/admin/leads?${s}` : "/admin/leads";
+}
 
 export default async function LeadsPage({ searchParams }: { searchParams: SearchParams }) {
   const staff = await requirePerm(["leads.view_all", "leads.view_assigned"]);
   const canViewContact = hasPerm(staff.permissions, "customers.view_contact");
   const canChangeStatus = hasPerm(staff.permissions, "leads.change_status");
-  const { status } = await searchParams;
+  const sp = await searchParams;
+  const status = TABS.some((t) => t.value === sp.status) ? (sp.status ?? "") : "";
+  const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
   const supabase = await createClient();
+
+  // Products for the picker: every product for staff who see all leads,
+  // otherwise only the products assigned to them. Names only; which leads
+  // are visible is still decided by RLS on leads.
+  const service = createServiceClient();
+  let productList: Array<{ id: string; slug: string; name: string }> = [];
+  if (hasPerm(staff.permissions, "leads.view_all")) {
+    const { data } = await service.from("products").select("id, slug, name").order("name");
+    productList = data ?? [];
+  } else {
+    const { data: assigned } = await service
+      .from("product_assignments")
+      .select("product_id")
+      .eq("profile_id", staff.userId);
+    const ids = (assigned ?? []).map((a) => a.product_id);
+    if (ids.length) {
+      const { data } = await service.from("products").select("id, slug, name").in("id", ids).order("name");
+      productList = data ?? [];
+    }
+  }
+
+  // ?product= takes a slug (links we build) or an id (older links)
+  const selected = sp.product
+    ? productList.find((p) => (UUID_RE.test(sp.product!) ? p.id === sp.product : p.slug === sp.product))
+    : undefined;
+  const productFilter = selected?.slug ?? "";
 
   let query = supabase
     .from("leads")
-    .select("id, order_number, name, phone, state, total, status, is_test, created_at, purchase_option, products(name)")
+    .select("id, order_number, name, phone, state, total, status, is_test, created_at, purchase_option, products(name)", { count: "exact" })
     .order("created_at", { ascending: false })
-    .limit(200);
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+  if (selected) query = query.eq("product_id", selected.id);
+  if (status) query = query.eq("status", status as LeadStatus);
 
-  if (status && status !== "") {
-    query = query.eq("status", status as LeadStatus);
-  }
+  // Count per status tab for the chosen product
+  const countFor = (value: string) => {
+    let q = supabase.from("leads").select("id", { count: "exact", head: true });
+    if (selected) q = q.eq("product_id", selected.id);
+    if (value) q = q.eq("status", value as LeadStatus);
+    return q.then(({ count }) => [value, count ?? 0] as const);
+  };
 
-  const { data: leads } = await query;
+  const [{ data: leads, count }, tabCounts] = await Promise.all([
+    query,
+    Promise.all(TABS.map((t) => countFor(t.value))),
+  ]);
+  const counts = Object.fromEntries(tabCounts) as Record<string, number>;
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
+  const notFoundProduct = Boolean(sp.product) && !selected;
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Leads</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+        <h1 className="text-xl font-bold text-gray-900">
+          Leads
+          {selected && <span className="text-gray-400 font-medium"> · {selected.name}</span>}
+        </h1>
+        {productList.length > 0 && (
+          <LeadProductFilter products={productList} value={productFilter} status={status} />
+        )}
       </div>
+
+      {notFoundProduct && (
+        <p className="mb-4 rounded-lg bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+          That product wasn&apos;t found or isn&apos;t assigned to you — showing all products.
+        </p>
+      )}
 
       {/* Status filter tabs */}
       <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
         {TABS.map((tab) => {
-          const href = tab.value ? `/admin/leads?status=${tab.value}` : "/admin/leads";
-          const active = (status ?? "") === tab.value;
+          const active = status === tab.value;
           return (
             <Link
               key={tab.value}
-              href={href}
+              href={leadsHref({ product: productFilter, status: tab.value })}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
                 active
                   ? "bg-gray-900 text-white"
@@ -57,6 +121,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
               }`}
             >
               {tab.label}
+              <span className={`ml-1.5 text-xs ${active ? "text-gray-300" : "text-gray-400"}`}>{counts[tab.value] ?? 0}</span>
             </Link>
           );
         })}
@@ -64,7 +129,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
 
       {!leads?.length ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400">
-          No leads yet.
+          {page > 1 ? (
+            <>No leads on this page. <Link href={leadsHref({ product: productFilter, status })} className="text-indigo-600 underline">Go to the first page</Link></>
+          ) : selected || status ? "No leads match this filter." : "No leads yet."}
         </div>
       ) : (
         <>
@@ -216,6 +283,22 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
               </table>
             </div>
           </div>
+
+          {totalPages > 1 && (
+            <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Pages">
+              {page > 1 ? (
+                <Link href={leadsHref({ product: productFilter, status, page: page - 1 })} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
+                  ‹ Newer
+                </Link>
+              ) : <span />}
+              <span className="text-gray-500">Page {page} of {totalPages} · {count} leads</span>
+              {page < totalPages ? (
+                <Link href={leadsHref({ product: productFilter, status, page: page + 1 })} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
+                  Older ›
+                </Link>
+              ) : <span />}
+            </nav>
+          )}
         </>
       )}
     </div>

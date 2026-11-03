@@ -349,7 +349,7 @@ function ProductCard({ product, permissions }: { product: EnrichedProduct; permi
           )}
           {hasAnyPerm(permissions, ["leads.view_all", "leads.view_assigned"]) && (
             <Link
-              href={`/admin/leads?product=${product.id}`}
+              href={`/admin/leads?product=${product.slug}`}
               className="flex-1 min-w-0 text-center text-xs font-medium py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition"
             >
               Leads

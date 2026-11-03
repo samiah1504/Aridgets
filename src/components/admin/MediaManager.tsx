@@ -100,7 +100,7 @@ export default function MediaManager({ productId }: Props) {
       kind: (isVideo ? "video" : "image") as MediaKind,
       url: publicUrl,
       provider: (isVideo ? "mp4" : "upload") as MediaProvider,
-      slot: isVideo ? ("gallery" as MediaSlot) : addSlot,
+      slot: addSlot,
       sort_order: media.length,
       alt: addAlt.trim() || null,
     });
@@ -236,7 +236,7 @@ export default function MediaManager({ productId }: Props) {
             className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white outline-none"
           >
             <option value="gallery">Gallery</option>
-            <option value="hero">Hero</option>
+            <option value="hero">Top of page</option>
           </select>
           <input
             type="text"
@@ -394,7 +394,7 @@ export default function MediaManager({ productId }: Props) {
                     className="text-xs border border-gray-200 rounded px-1.5 py-0.5 bg-white outline-none"
                   >
                     <option value="gallery">Gallery</option>
-                    <option value="hero">Hero</option>
+                    <option value="hero">Top of page</option>
                   </select>
                 </div>
               </div>

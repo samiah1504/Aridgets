@@ -5,7 +5,7 @@ import AnnouncementBar from "@/components/sections/AnnouncementBar";
 import Hero from "@/components/sections/Hero";
 import Problem from "@/components/sections/Problem";
 import Benefits from "@/components/sections/Benefits";
-import MediaGallery from "@/components/sections/MediaGallery";
+import MediaStack from "@/components/sections/MediaStack";
 import ProductDetails from "@/components/sections/ProductDetails";
 import HowItWorks from "@/components/sections/HowItWorks";
 import FeaturesSpecs from "@/components/sections/FeaturesSpecs";
@@ -27,6 +27,15 @@ export default function OptionsBundlesTheme({
   const fromPrice = lowestPrice(purchaseOptions) ?? product.price;
   const pricesVary = new Set(purchaseOptions.map((o) => o.price)).size > 1;
 
+  // Media marked "Top of page" (hero slot) opens the page, pictures and videos
+  // alike; with nothing marked, the first picture goes there. Everything else
+  // is shown in the gallery section. Each item stands alone, uncropped.
+  const ordered = [...media].sort((a, b) => a.sort_order - b.sort_order);
+  const marked = ordered.filter((m) => m.slot === "hero");
+  const firstImage = ordered.find((m) => m.kind === "image");
+  const topMedia = marked.length ? marked : firstImage ? [firstImage] : [];
+  const galleryMedia = ordered.filter((m) => !topMedia.includes(m));
+
   const sectionMap: Record<string, React.ReactNode> = {
     announcementBar: <AnnouncementBar text={content.announcementBar} />,
     hero: (
@@ -46,7 +55,13 @@ export default function OptionsBundlesTheme({
     // Product description, materials, dimensions and delivery info follow the gallery
     mediaGallery: (
       <>
-        <MediaGallery media={media} productName={product.name} />
+        {galleryMedia.length > 0 && (
+          <section className="px-4 sp-section">
+            <div className="max-w-lg mx-auto">
+              <MediaStack items={galleryMedia} productName={product.name} />
+            </div>
+          </section>
+        )}
         <ProductDetails
           description={content.productDescription}
           material={content.material}
@@ -118,9 +133,15 @@ export default function OptionsBundlesTheme({
 
   return (
     <>
-      {keys.map((key) =>
+      {keys.map((key, i) =>
         sectionMap[key] ? (
           <div key={key}>
+            {/* Top-of-page media: right after the announcement bar, before the headline */}
+            {i === keys.findIndex((k) => k !== "announcementBar") && topMedia.length > 0 && (
+              <div className="px-4 pt-4 max-w-lg mx-auto">
+                <MediaStack items={topMedia} productName={product.name} eager />
+              </div>
+            )}
             {sectionMap[key]}
             {orderBlocks[key]}
           </div>
