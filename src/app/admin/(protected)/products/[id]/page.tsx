@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { requirePerm, hasPerm } from "@/lib/auth";
+import { requirePerm, hasPerm, hasAnyPerm } from "@/lib/auth";
 import ProductForm from "@/components/admin/ProductForm";
 
 type Params = Promise<{ id: string }>;
@@ -49,7 +50,17 @@ export default async function EditProductPage({ params }: { params: Params }) {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-6">{product.name}</h1>
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <h1 className="text-xl font-bold text-gray-900 min-w-0 truncate">{product.name}</h1>
+        {hasAnyPerm(staff.permissions, ["leads.view_all", "leads.view_assigned"]) && (
+          <Link
+            href={`/admin/leads?product=${product.slug}`}
+            className="shrink-0 text-sm font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+          >
+            View leads
+          </Link>
+        )}
+      </div>
       <ProductForm product={safeProduct} permissions={staff.permissions} />
     </div>
   );
