@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { sendCAPIEvent } from "@/lib/capi";
+import { fbcFromClickId, sendCAPIEvent } from "@/lib/capi";
 import { SITE_URL } from "@/lib/config";
 
 const EVENT_NAMES = ["PageView", "ViewContent", "Lead", "Contact"] as const;
@@ -66,6 +66,13 @@ export async function POST(request: NextRequest) {
       request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
       request.headers.get("x-real-ip") ??
       null;
+    const referer = request.headers.get("referer");
+    let refererClickId: string | null = null;
+    try {
+      refererClickId = referer ? new URL(referer).searchParams.get("fbclid") : null;
+    } catch {
+      refererClickId = null;
+    }
 
     await sendCAPIEvent({
       pixelId: product.pixel_id,
@@ -74,11 +81,12 @@ export async function POST(request: NextRequest) {
       eventName,
       eventId,
       eventTime: Math.floor(Date.now() / 1000),
-      sourceUrl: request.headers.get("referer") ?? `${SITE_URL}/p/${product.slug}`,
+      sourceUrl: referer ?? `${SITE_URL}/p/${product.slug}`,
       clientIp,
       clientUserAgent: request.headers.get("user-agent"),
       fbp: request.cookies.get("_fbp")?.value ?? null,
-      fbc: request.cookies.get("_fbc")?.value ?? null,
+      // Pixel cookie, or the ad link's fbclid when the pixel was blocked
+      fbc: request.cookies.get("_fbc")?.value ?? fbcFromClickId(refererClickId, Date.now()),
       ...(eventName === "ViewContent" && {
         currency: "NGN",
         value: product.price,
