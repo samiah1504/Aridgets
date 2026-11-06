@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { isValidNGPhone, normaliseNGPhone } from "@/lib/utils/phone";
 import { NIGERIAN_STATES } from "@/lib/constants/states";
-import { sendCAPIEvent } from "@/lib/capi";
+import { fbcFromClickId, sendCAPIEvent } from "@/lib/capi";
 import { sendPushToAll } from "@/lib/push";
 import {
   MIN_ORDER_QTY,
@@ -179,6 +179,11 @@ export async function POST(request: NextRequest) {
     null;
   const clientUserAgent = headerStore.get("user-agent") ?? null;
 
+  // Ad click ID: from the pixel's _fbc cookie, or built from the fbclid in the
+  // ad link when the pixel was blocked, so Meta can still tie the order to the ad
+  const fbclid = typeof b.fbclid === "string" ? b.fbclid.trim().slice(0, 500) || null : null;
+  const fbc = typeof b.fbc === "string" && b.fbc ? b.fbc : fbcFromClickId(fbclid, Date.now());
+
   const insertPayload: LeadInsert = {
     product_id: productId,
     name: rawName,
@@ -191,8 +196,8 @@ export async function POST(request: NextRequest) {
     unit_price: unitPrice,
     total,
     fbp: typeof b.fbp === "string" ? b.fbp : null,
-    fbc: typeof b.fbc === "string" ? b.fbc : null,
-    fbclid: typeof b.fbclid === "string" ? b.fbclid : null,
+    fbc,
+    fbclid,
     utm_source: typeof b.utm_source === "string" ? b.utm_source : null,
     utm_medium: typeof b.utm_medium === "string" ? b.utm_medium : null,
     utm_campaign: typeof b.utm_campaign === "string" ? b.utm_campaign : null,
@@ -286,7 +291,7 @@ export async function POST(request: NextRequest) {
       clientIp,
       clientUserAgent,
       fbp: typeof b.fbp === "string" ? b.fbp : null,
-      fbc: typeof b.fbc === "string" ? b.fbc : null,
+      fbc,
       currency: "NGN",
       value: result.total,
       contentName: pixelData.name,

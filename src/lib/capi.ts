@@ -9,6 +9,17 @@ function sha256(value: string): string {
   return createHash("sha256").update(value.trim().toLowerCase()).digest("hex");
 }
 
+/**
+ * Meta click ID (fbc) built on the server from an ad click's fbclid, for when
+ * the browser pixel didn't set the _fbc cookie (blocked or not loaded).
+ * Format per Meta: fb.{subdomain index}.{creation time in ms}.{fbclid}.
+ */
+export function fbcFromClickId(fbclid: string | null | undefined, createdAtMs: number): string | null {
+  const id = fbclid?.trim();
+  if (!id || id.length > 500 || !/^[\w-]+$/.test(id)) return null;
+  return `fb.1.${createdAtMs}.${id}`;
+}
+
 export interface CAPIEventPayload {
   pixelId: string;
   accessToken: string;
