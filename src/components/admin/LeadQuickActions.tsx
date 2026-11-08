@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ContactButtons from "./ContactButtons";
+import CopyOrderButton from "./CopyOrderButton";
 import { LEAD_STATUSES } from "@/lib/leadStatus";
 import type { LeadStatus } from "@/types";
 
@@ -17,6 +18,8 @@ interface Props {
   status: LeadStatus;
   canChangeStatus: boolean;
   actorName: string | null;
+  /** Order summary for the Copy button */
+  copyText?: string;
 }
 
 // "Paid" is only reached by recording a payment on the order page, so it is
@@ -32,6 +35,7 @@ export default function LeadQuickActions({
   status,
   canChangeStatus,
   actorName,
+  copyText,
 }: Props) {
   const router = useRouter();
   const [updating, setUpdating] = useState(false);
@@ -65,6 +69,7 @@ export default function LeadQuickActions({
           compact
         />
       )}
+      {copyText && <CopyOrderButton text={copyText} compact />}
       {canChangeStatus && (
         <select
           value={status}

@@ -10,6 +10,8 @@ import AssignLead from "@/components/admin/AssignLead";
 import ContactButtons from "@/components/admin/ContactButtons";
 import FollowUpPanel from "@/components/admin/FollowUpPanel";
 import PaymentPanel from "@/components/admin/PaymentPanel";
+import CopyOrderButton from "@/components/admin/CopyOrderButton";
+import { formatOrderText } from "@/lib/orderText";
 import { STATUS_BADGE as STATUS_STYLES, STATUS_LABELS } from "@/lib/leadStatus";
 import type { LeadStatus } from "@/types";
 
@@ -190,6 +192,18 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
             🧪 TEST LEAD
           </span>
         )}
+        <div className="ml-auto shrink-0">
+          <CopyOrderButton
+            text={formatOrderText(
+              {
+                ...lead,
+                selected_options: lead.selected_options as Record<string, string> | null,
+                productName: product?.name ?? null,
+              },
+              { includeContact: canViewContact }
+            )}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
