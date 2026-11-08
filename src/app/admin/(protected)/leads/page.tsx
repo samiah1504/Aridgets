@@ -5,6 +5,7 @@ import { requirePerm, hasPerm } from "@/lib/auth";
 import { formatNGN } from "@/lib/utils/currency";
 import LeadQuickActions from "@/components/admin/LeadQuickActions";
 import LeadProductFilter from "@/components/admin/LeadProductFilter";
+import { formatOrderText } from "@/lib/orderText";
 import { LEAD_STATUSES, STATUS_BADGE as STATUS_STYLES, STATUS_LABELS } from "@/lib/leadStatus";
 import type { LeadStatus } from "@/types";
 
@@ -66,7 +67,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
 
   let query = supabase
     .from("leads")
-    .select("id, order_number, name, phone, state, total, status, is_test, created_at, purchase_option, products(name)", { count: "exact" })
+    .select("id, order_number, name, phone, state, city, address, quantity, unit_price, total, amount_paid, status, is_test, created_at, purchase_option, selected_options, delivery_preference, delivery_date, products(name)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (selected) query = query.eq("product_id", selected.id);
@@ -87,6 +88,15 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
   const counts = Object.fromEntries(tabCounts) as Record<string, number>;
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
   const notFoundProduct = Boolean(sp.product) && !selected;
+  const orderText = (lead: NonNullable<typeof leads>[number]) =>
+    formatOrderText(
+      {
+        ...lead,
+        selected_options: lead.selected_options as Record<string, string> | null,
+        productName: (lead.products as { name: string } | null)?.name ?? null,
+      },
+      { includeContact: canViewContact }
+    );
 
   return (
     <div>
@@ -199,6 +209,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
                       status={statusKey}
                       canChangeStatus={canChangeStatus}
                       actorName={staff.fullName}
+                      copyText={orderText(lead)}
                     />
                   </div>
                 </div>
@@ -274,6 +285,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
                             status={statusKey}
                             canChangeStatus={canChangeStatus}
                             actorName={staff.fullName}
+                            copyText={orderText(lead)}
                           />
                         </td>
                       </tr>
