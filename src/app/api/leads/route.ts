@@ -9,10 +9,13 @@ import {
   MIN_ORDER_QTY,
   maxOrderQuantity,
   resolveDeliverySettings,
+  MAX_ORDER_QTY,
+  MAX_ORDER_TOTAL,
+  toOrderSnapshot,
   toSnapshot,
   validateDeliveryDate,
 } from "@/lib/purchaseOptions";
-import type { DeliveryPreference, ProductContent, PurchaseOptionSnapshot } from "@/types";
+import type { DeliveryPreference, ProductContent, PurchaseOption, PurchaseOptionSnapshot } from "@/types";
 import type { Database } from "@/types/database";
 
 type LeadInsert = Database["public"]["Tables"]["leads"]["Insert"];
@@ -95,8 +98,61 @@ export async function POST(request: NextRequest) {
   let unitPrice = product.price;
   let validVariantId: string | null = null;
   let purchaseOption: PurchaseOptionSnapshot | null = null;
+  let purchaseOptionId: string | null = null;
+  // Set when the order holds several options (their prices differ)
+  let orderTotal: number | null = null;
 
-  if (product.template_type === "options_bundles") {
+  if (product.template_type === "options_bundles" && Array.isArray(b.items)) {
+    // Several options in one order (allowMultipleOptions). Prices always come
+    // from the saved product; a mismatch with what was shown is rejected.
+    const saved = product.content?.purchaseOptions ?? [];
+    const raw = b.items as unknown[];
+    if (raw.length === 0 || raw.length > 50) {
+      return NextResponse.json({ error: "Please choose an option" }, { status: 400 });
+    }
+    if (raw.length > 1 && product.content?.allowMultipleOptions !== true) {
+      return NextResponse.json(
+        { error: "Only one option can be ordered at a time. Please refresh the page." },
+        { status: 400 }
+      );
+    }
+    const lines: Array<{ option: PurchaseOption; quantity: number }> = [];
+    let priceChanged = false;
+    for (const item of raw) {
+      const it = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+      const option = saved.find((o) => o.id === it.purchase_option_id);
+      if (!option || !option.active) {
+        return NextResponse.json(
+          { error: "An option you chose is no longer available. Please refresh the page and choose again." },
+          { status: 400 }
+        );
+      }
+      if (lines.some((l) => l.option.id === option.id)) {
+        return NextResponse.json({ error: "Each option can only be listed once" }, { status: 400 });
+      }
+      const q = it.quantity;
+      if (typeof q !== "number" || !Number.isInteger(q) || q < MIN_ORDER_QTY) {
+        return NextResponse.json({ error: "Quantity must be a whole number of 1 or more" }, { status: 400 });
+      }
+      if (it.expected_unit_price !== undefined && it.expected_unit_price !== option.price) priceChanged = true;
+      lines.push({ option, quantity: q });
+    }
+    const order = toOrderSnapshot(lines);
+    if (order.quantity > MAX_ORDER_QTY || order.total > MAX_ORDER_TOTAL) {
+      return NextResponse.json({ error: "This order is too large — please contact us directly" }, { status: 400 });
+    }
+    if (priceChanged || (b.expected_total !== undefined && b.expected_total !== order.total)) {
+      return NextResponse.json(
+        { error: "The price of an option has changed. Please refresh the page to see the current price." },
+        { status: 409 }
+      );
+    }
+    purchaseOption = order.snapshot;
+    purchaseOptionId = order.optionId;
+    unitPrice = order.unitPrice;
+    quantity = order.quantity;
+    orderTotal = order.total;
+  } else if (product.template_type === "options_bundles") {
     // Purchasing options: the price always comes from the saved product
     // configuration. Any price or total the browser sends is ignored, and a
     // mismatch with what the customer was shown is rejected.
@@ -136,6 +192,7 @@ export async function POST(request: NextRequest) {
     unitPrice = option.price;
     quantity = requestedQty;
     purchaseOption = toSnapshot(option);
+    purchaseOptionId = option.id;
   } else if (variantId) {
     // If a variant was selected, validate it and use its price_override.
     // Only a variant that actually exists is stored — a bogus ID from a
@@ -154,7 +211,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const total = unitPrice * quantity;
+  const total = orderTotal ?? unitPrice * quantity;
 
   // Delivery preference (a customer preference, not a delivery commitment)
   const delivery = resolveDeliverySettings(product.content, product.template_type);
@@ -205,7 +262,7 @@ export async function POST(request: NextRequest) {
     client_ip: clientIp,
     client_user_agent: clientUserAgent,
     variant_id: validVariantId || undefined,
-    purchase_option_id: purchaseOption?.id ?? null,
+    purchase_option_id: purchaseOptionId,
     purchase_option: purchaseOption,
     delivery_preference: deliveryPreference,
     delivery_date: deliveryDate,

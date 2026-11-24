@@ -47,6 +47,18 @@ export interface PurchaseOptionSnapshot {
   description: string | null;
   includes: string[];
   unit_price: number;
+  /** Present when the customer ordered several options in one order: one
+   *  line per option. id is then "multiple" and unit_price an average. */
+  items?: OrderLineSnapshot[];
+}
+
+export interface OrderLineSnapshot {
+  id: string;
+  name: string;
+  description: string | null;
+  includes: string[];
+  unit_price: number;
+  quantity: number;
 }
 
 export type DeliveryPreference = "asap" | "date";
@@ -134,6 +146,8 @@ export interface ProductContent {
   productDescription?: string;
   purchaseOptions?: PurchaseOption[];
   purchaseOptionsHeading?: string;
+  /** Customers may pick several options (each with its own quantity) in one order. Default off. */
+  allowMultipleOptions?: boolean;
   deliveryPreference?: DeliveryPreferenceSettings;
   orderFormTitle?: string;
   orderSuccessHeadline?: string;

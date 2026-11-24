@@ -5,6 +5,7 @@
 
 import type {
   DeliveryPreferenceSettings,
+  OrderLineSnapshot,
   ProductContent,
   PurchaseOption,
   PurchaseOptionSnapshot,
@@ -42,6 +43,52 @@ export function toSnapshot(option: PurchaseOption): PurchaseOptionSnapshot {
     includes: option.includes ?? [],
     unit_price: option.price,
   };
+}
+
+/**
+ * An order of several options (allowMultipleOptions): one line per option.
+ * A single line is stored exactly like a normal one-option order.
+ */
+export function toOrderSnapshot(lines: Array<{ option: PurchaseOption; quantity: number }>): {
+  snapshot: PurchaseOptionSnapshot;
+  optionId: string | null;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+} {
+  const quantity = lines.reduce((n, l) => n + l.quantity, 0);
+  const total = lines.reduce((n, l) => n + l.option.price * l.quantity, 0);
+  if (lines.length === 1) {
+    const { option } = lines[0];
+    return { snapshot: toSnapshot(option), optionId: option.id, quantity, unitPrice: option.price, total };
+  }
+  const items: OrderLineSnapshot[] = lines.map(({ option, quantity: q }) => ({ ...toSnapshot(option), quantity: q }));
+  const unitPrice = Math.round(total / quantity);
+  return {
+    snapshot: {
+      id: "multiple",
+      name: items.map((i) => `${i.name} × ${i.quantity}`).join(", "),
+      description: null,
+      includes: [],
+      unit_price: unitPrice,
+      items,
+    },
+    optionId: null,
+    quantity,
+    unitPrice,
+    total,
+  };
+}
+
+/** What an order contains, one line per option (older orders: a single line). */
+export function orderLines(
+  snapshot: PurchaseOptionSnapshot | null,
+  quantity: number,
+  unitPrice: number
+): OrderLineSnapshot[] {
+  if (snapshot?.items?.length) return snapshot.items;
+  if (!snapshot) return [];
+  return [{ ...snapshot, unit_price: unitPrice, quantity }];
 }
 
 /** Field problems that must be fixed before the options can be saved. */
