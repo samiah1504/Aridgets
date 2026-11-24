@@ -84,6 +84,7 @@ export default function OptionsBundlesTheme({
         options={[]}
         variants={[]}
         purchaseOptions={purchaseOptions}
+        allowMultiple={content.allowMultipleOptions === true}
         purchaseOptionsHeading={content.purchaseOptionsHeading}
         delivery={delivery}
         today={today}

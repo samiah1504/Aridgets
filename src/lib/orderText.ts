@@ -61,13 +61,24 @@ export function formatOrderText(o: OrderTextInput, { includeContact }: { include
   lines.push("");
 
   lines.push(`Product: ${o.productName ?? "—"}`);
-  if (o.purchase_option) {
-    lines.push(`Option: ${o.purchase_option.name}`);
-    if (o.purchase_option.includes.length) lines.push(`Includes: ${o.purchase_option.includes.join(", ")}`);
+  const items = o.purchase_option?.items ?? [];
+  if (items.length) {
+    // Several options in one order: one line each
+    lines.push("Items:");
+    for (const item of items) {
+      lines.push(`- ${item.name} × ${item.quantity} = ${formatNGN(item.unit_price * item.quantity)}`);
+      if (item.includes.length) lines.push(`  Includes: ${item.includes.join(", ")}`);
+    }
+    lines.push(`Total items: ${o.quantity}`);
+  } else {
+    if (o.purchase_option) {
+      lines.push(`Option: ${o.purchase_option.name}`);
+      if (o.purchase_option.includes.length) lines.push(`Includes: ${o.purchase_option.includes.join(", ")}`);
+    }
+    const variant = Object.entries(o.selected_options ?? {});
+    if (variant.length) lines.push(`Variant: ${variant.map(([k, v]) => `${k}: ${v}`).join(", ")}`);
+    lines.push(`Quantity: ${o.quantity} × ${formatNGN(o.unit_price)}`);
   }
-  const variant = Object.entries(o.selected_options ?? {});
-  if (variant.length) lines.push(`Variant: ${variant.map(([k, v]) => `${k}: ${v}`).join(", ")}`);
-  lines.push(`Quantity: ${o.quantity} × ${formatNGN(o.unit_price)}`);
   lines.push(`Total: ${formatNGN(o.total)}`);
 
   const outstanding = Math.max(o.total - o.amount_paid, 0);

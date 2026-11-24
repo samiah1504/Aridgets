@@ -93,6 +93,7 @@ export default function ThemePreview({ theme, productName, price, content, secti
         options={[]}
         variants={[]}
         purchaseOptions={options}
+        allowMultiple={content.allowMultipleOptions === true}
         purchaseOptionsHeading={content.purchaseOptionsHeading}
         delivery={delivery}
         today={todayInLagos()}

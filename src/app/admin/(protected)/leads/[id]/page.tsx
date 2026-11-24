@@ -295,7 +295,34 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
               </div>
             )}
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              {lead.purchase_option && (
+              {lead.purchase_option?.items?.length ? (
+                <div className="col-span-2 rounded-lg bg-gray-50 px-3 py-2.5">
+                  <dt className="text-gray-400">Options ordered ({lead.purchase_option.items.length})</dt>
+                  <dd className="mt-1">
+                    <ul className="divide-y divide-gray-200">
+                      {lead.purchase_option.items.map((item) => (
+                        <li key={item.id} className="py-1.5 flex items-start justify-between gap-3">
+                          <span className="min-w-0">
+                            <span className="block font-semibold text-gray-900">
+                              {item.name} × {item.quantity}
+                            </span>
+                            {item.includes.length > 0 && (
+                              <span className="block text-xs text-gray-600">Includes: {item.includes.join(" · ")}</span>
+                            )}
+                          </span>
+                          <span className="shrink-0 text-right text-xs text-gray-500">
+                            <span className="block font-semibold text-gray-900">{formatNGN(item.unit_price * item.quantity)}</span>
+                            {formatNGN(item.unit_price)} each
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </dd>
+                  <dd className="text-xs text-gray-400 mt-1">
+                    Prices at time of order — later product changes don&apos;t affect this order.
+                  </dd>
+                </div>
+              ) : lead.purchase_option && (
                 <div className="col-span-2 rounded-lg bg-gray-50 px-3 py-2.5">
                   <dt className="text-gray-400">Option ordered</dt>
                   <dd className="font-semibold text-gray-900 mt-0.5">{lead.purchase_option.name}</dd>
@@ -329,10 +356,12 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 <dt className="text-gray-400">Quantity</dt>
                 <dd className="font-medium text-gray-900 mt-0.5">{lead.quantity}</dd>
               </div>
-              <div>
-                <dt className="text-gray-400">Unit price</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{formatNGN(lead.unit_price)}</dd>
-              </div>
+              {!lead.purchase_option?.items?.length && (
+                <div>
+                  <dt className="text-gray-400">Unit price</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">{formatNGN(lead.unit_price)}</dd>
+                </div>
+              )}
               <div>
                 <dt className="text-gray-400">Total</dt>
                 <dd className="font-bold text-gray-900 text-base mt-0.5">{formatNGN(lead.total)}</dd>

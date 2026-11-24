@@ -8,6 +8,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendCAPIEvent } from "@/lib/capi";
 import { SITE_URL } from "@/lib/config";
+import { orderLines } from "@/lib/purchaseOptions";
 
 /** In-flight lock per order, released when the attempt finishes (expires if the server dies mid-attempt). */
 const ATTEMPT_LOCK_SECONDS = 60;
@@ -74,6 +75,14 @@ export async function deliverPurchaseEvent(leadId: string): Promise<PurchaseDeli
 
   const nameParts = (lead.name ?? "").trim().split(/\s+/);
   try {
+    // One entry per option for orders of several options (their prices differ)
+    const productId = lead.product_id;
+    const lines = orderLines(lead.purchase_option, lead.quantity, lead.unit_price);
+    const contents = (lines.length ? lines : [{ quantity: lead.quantity, unit_price: lead.unit_price }]).map((l) => ({
+      id: productId,
+      quantity: l.quantity,
+      item_price: l.unit_price,
+    }));
     const { confirmed } = await sendCAPIEvent({
       pixelId: product.pixel_id,
       accessToken: product.capi_access_token,
@@ -98,7 +107,7 @@ export async function deliverPurchaseEvent(leadId: string): Promise<PurchaseDeli
       contentName: product.name,
       orderId: lead.order_number,
       contentIds: [lead.product_id],
-      contents: [{ id: lead.product_id, quantity: lead.quantity, item_price: lead.unit_price }],
+      contents,
       numItems: lead.quantity,
       log: { productId: lead.product_id, leadId: lead.id, test: lead.is_test },
     });

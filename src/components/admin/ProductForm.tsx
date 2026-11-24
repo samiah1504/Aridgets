@@ -748,9 +748,8 @@ export default function ProductForm({ product: initial, permissions }: Props) {
     Options: (
       <div className="space-y-5">
         <p className="text-sm text-gray-500">
-          The purchasing options customers choose from (sets, bundles or packages). Each order is for exactly one
-          option; the total is the option&apos;s unit price × quantity. Changes go live when you click Save and never
-          change existing orders.
+          The purchasing options customers choose from (sets, bundles, packages or colours). The total is each
+          option&apos;s unit price × quantity. Changes go live when you click Save and never change existing orders.
         </p>
         {showOptionErrors && optionProblems.length > 0 && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
@@ -779,6 +778,23 @@ export default function ProductForm({ product: initial, permissions }: Props) {
             placeholder="Choose your option"
           />
         </Field>
+        <label className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={content.allowMultipleOptions === true}
+            onChange={(e) => setContent({ allowMultipleOptions: e.target.checked })}
+            className="mt-0.5 w-4 h-4 accent-indigo-600 shrink-0"
+          />
+          <span>
+            <span className="block text-sm font-semibold text-gray-900">
+              Let customers choose more than one option in one order
+            </span>
+            <span className="block text-xs text-gray-500 mt-0.5">
+              E.g. 1 Cream + 1 Blue. Each option gets its own quantity and the order total adds them up. Off: customers
+              pick exactly one option (as before). Takes effect when you click Save options.
+            </span>
+          </span>
+        </label>
         <PurchaseOptionsEditor
           productId={product.id}
           value={purchaseOptions}

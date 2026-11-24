@@ -43,8 +43,10 @@ export interface VariantAwareOrderFormProps {
   /** @deprecated Colours come from the page theme tokens (sp-* classes) */
   primaryColor?: string;
   notice?: SeriousBuyerNotice;
-  /** Active purchasing options — when present the customer picks exactly one */
+  /** Active purchasing options — when present the customer picks one (or several, see allowMultiple) */
   purchaseOptions?: PurchaseOption[];
+  /** Customers may tick several options, each with its own quantity */
+  allowMultiple?: boolean;
   purchaseOptionsHeading?: string;
   delivery?: DeliverySettings;
   /** Today's date in Nigeria (YYYY-MM-DD), computed on the server */
@@ -105,12 +107,14 @@ export default function VariantAwareOrderForm({
   variants,
   notice,
   purchaseOptions,
+  allowMultiple,
   purchaseOptionsHeading,
   delivery,
   today,
   preview,
 }: VariantAwareOrderFormProps) {
   const optionsMode = !!purchaseOptions?.length;
+  const multiMode = optionsMode && !!allowMultiple;
   const deliveryEnabled = !!delivery?.enabled && !!today;
   const noticeEnabled = notice?.enabled !== false;
   const noticeRequired = noticeEnabled && notice?.required !== false;
@@ -135,6 +139,10 @@ export default function VariantAwareOrderForm({
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(
     purchaseOptions?.length === 1 ? purchaseOptions[0].id : null
   );
+  // Several options at once (multiMode): quantity per option id, and the
+  // typed text of each quantity box (may be briefly empty while editing)
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cartText, setCartText] = useState<Record<string, string>>({});
   const [deliveryPref, setDeliveryPref] = useState<DeliveryPreference>("asap");
   const [deliveryDate, setDeliveryDate] = useState("");
 
@@ -170,11 +178,32 @@ export default function VariantAwareOrderForm({
     selectedOption?.price ?? matchedVariant?.price_override ?? basePrice;
   const effectiveCompareAt =
     matchedVariant?.compare_at_price_override ?? compareAtPrice ?? null;
-  const total = effectivePrice * quantity;
+  const cartLines = multiMode
+    ? purchaseOptions!.filter((o) => (cart[o.id] ?? 0) > 0).map((o) => ({ option: o, quantity: cart[o.id] }))
+    : [];
+  const total = multiMode
+    ? cartLines.reduce((sum, l) => sum + l.option.price * l.quantity, 0)
+    : effectivePrice * quantity;
 
   const outOfStock = isOutOfStock(matchedVariant);
 
+  function setLineQuantity(optionId: string, q: number) {
+    setCart((c) => {
+      const next = { ...c };
+      if (q > 0) next[optionId] = q;
+      else delete next[optionId];
+      return next;
+    });
+    setCartText((t) => ({ ...t, [optionId]: String(q) }));
+  }
+
   function choosePurchaseOption(option: PurchaseOption) {
+    if (multiMode) {
+      // Tick / untick; a newly ticked option starts at 1
+      setLineQuantity(option.id, (cart[option.id] ?? 0) > 0 ? 0 : MIN_ORDER_QTY);
+      setErrors((e) => ({ ...e, purchaseOption: "" }));
+      return;
+    }
     if (option.id === selectedOptionId) return;
     setSelectedOptionId(option.id);
     // Start each option at its own minimum quantity
@@ -191,6 +220,11 @@ export default function VariantAwareOrderForm({
       const option = purchaseOptions.find((o) => o.id === id);
       if (!option) return;
       setErrors((prev) => ({ ...prev, purchaseOption: "" }));
+      if (multiMode) {
+        // Add it to the order (keeps anything already chosen)
+        if (!(cart[option.id] > 0)) setLineQuantity(option.id, MIN_ORDER_QTY);
+        return;
+      }
       if (option.id === selectedOptionId) return;
       setSelectedOptionId(option.id);
       setQuantity(MIN_ORDER_QTY);
@@ -198,7 +232,7 @@ export default function VariantAwareOrderForm({
     };
     window.addEventListener(CHOOSE_OPTION_EVENT, onChoose);
     return () => window.removeEventListener(CHOOSE_OPTION_EVENT, onChoose);
-  }, [purchaseOptions, selectedOptionId]);
+  }, [purchaseOptions, selectedOptionId, multiMode, cart]);
 
   function changeOptionQuantity(next: number, maxQty: number) {
     const q = Math.min(maxQty, Math.max(MIN_ORDER_QTY, next));
@@ -220,7 +254,8 @@ export default function VariantAwareOrderForm({
         e[`option_${o.id}`] = `Please choose a ${o.name.toLowerCase()}`;
       }
     });
-    if (optionsMode && !selectedOption) e.purchaseOption = "Please choose an option";
+    if (multiMode && !Object.values(cart).some((q) => q > 0)) e.purchaseOption = "Please choose at least one option";
+    else if (optionsMode && !multiMode && !selectedOption) e.purchaseOption = "Please choose an option";
     if (deliveryEnabled && deliveryPref === "date") {
       const dateError = validateDeliveryDate(deliveryDate, today);
       if (dateError) e.deliveryDate = dateError;
@@ -234,7 +269,7 @@ export default function VariantAwareOrderForm({
       e.buyerConfirmed = "Please tick the confirmation box to place your order";
     }
     return e;
-  }, [activeOptions, selectedValues, optionsMode, selectedOption, deliveryEnabled, deliveryPref, deliveryDate, today, name, phone, state, address, noticeRequired, buyerConfirmed]);
+  }, [activeOptions, selectedValues, optionsMode, multiMode, cart, selectedOption, deliveryEnabled, deliveryPref, deliveryDate, today, name, phone, state, address, noticeRequired, buyerConfirmed]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -285,7 +320,17 @@ export default function VariantAwareOrderForm({
           utm_campaign: utmCampaign,
           utm_content: utmContent,
           variant_id: optionsMode ? undefined : matchedVariant?.id ?? undefined,
-          ...(selectedOption && {
+          ...(multiMode && {
+            // Prices are only sent so the server can reject a stale page —
+            // the server always charges the saved option prices.
+            items: cartLines.map((l) => ({
+              purchase_option_id: l.option.id,
+              quantity: l.quantity,
+              expected_unit_price: l.option.price,
+            })),
+            expected_total: total,
+          }),
+          ...(!multiMode && selectedOption && {
             purchase_option_id: selectedOption.id,
             // Sent only so the server can reject a stale or tampered price —
             // the server always charges the saved option price.
@@ -376,16 +421,29 @@ export default function VariantAwareOrderForm({
             </div>
           )}
 
-          {/* Purchasing options — exactly one per order */}
+          {/* Purchasing options — one per order, or several when allowed */}
           {optionsMode && (
             <div id="order-options">
               <p className="text-sm font-semibold mb-2" id="order-options-label">
                 {purchaseOptionsHeading || "Choose your option"} <span className="text-red-500">*</span>
               </p>
-              <div role="radiogroup" aria-labelledby="order-options-label" className="space-y-3">
+              {multiMode && (
+                <p className="text-xs sp-muted -mt-1 mb-2">You can choose more than one, each with its own quantity.</p>
+              )}
+              <div
+                role={multiMode ? "group" : "radiogroup"}
+                aria-labelledby="order-options-label"
+                className="space-y-3"
+              >
                 {purchaseOptions!.map((option) => {
-                  const selected = option.id === selectedOptionId;
+                  const lineQty = multiMode ? cart[option.id] ?? 0 : quantity;
+                  const selected = multiMode ? lineQty > 0 : option.id === selectedOptionId;
                   const maxQty = maxOrderQuantity(option.price);
+                  const setQty = (q: number) =>
+                    multiMode
+                      ? setLineQuantity(option.id, Math.min(maxQty, Math.max(MIN_ORDER_QTY, q)))
+                      : changeOptionQuantity(q, maxQty);
+                  const text = multiMode ? cartText[option.id] ?? String(lineQty) : qtyText;
                   return (
                     <div
                       key={option.id}
@@ -395,18 +453,29 @@ export default function VariantAwareOrderForm({
                     >
                       <button
                         type="button"
-                        role="radio"
+                        role={multiMode ? "checkbox" : "radio"}
                         aria-checked={selected}
                         onClick={() => choosePurchaseOption(option)}
                         className="w-full text-left flex gap-3 p-3"
                       >
                         <span
-                          className={`mt-1 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${
-                            selected ? "border-[var(--product-primary)]" : "sp-border"
+                          className={`mt-1 w-5 h-5 border-2 shrink-0 flex items-center justify-center ${
+                            multiMode ? "rounded" : "rounded-full"
+                          } ${
+                            selected
+                              ? multiMode
+                                ? "border-[var(--product-primary)] bg-[var(--product-primary)]"
+                                : "border-[var(--product-primary)]"
+                              : "sp-border"
                           }`}
                           aria-hidden
                         >
-                          {selected && <span className="w-2.5 h-2.5 rounded-full bg-[var(--product-primary)]" />}
+                          {selected &&
+                            (multiMode ? (
+                              <span className="sp-on-primary bg-transparent text-xs font-bold leading-none">✓</span>
+                            ) : (
+                              <span className="w-2.5 h-2.5 rounded-full bg-[var(--product-primary)]" />
+                            ))}
                         </span>
                         {option.imageUrl && (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -445,36 +514,41 @@ export default function VariantAwareOrderForm({
                             <span className="text-sm font-semibold">Qty</span>
                             <button
                               type="button"
-                              aria-label="Decrease quantity"
-                              disabled={quantity <= MIN_ORDER_QTY}
-                              onClick={() => changeOptionQuantity(quantity - 1, maxQty)}
+                              aria-label={`Decrease quantity of ${option.name}`}
+                              disabled={lineQty <= MIN_ORDER_QTY}
+                              onClick={() => setQty(lineQty - 1)}
                               className="sp-btn-outline w-9 h-9 text-lg font-bold flex items-center justify-center transition"
                             >−</button>
                             <input
                               type="number"
                               inputMode="numeric"
-                              aria-label="Quantity"
+                              aria-label={`Quantity of ${option.name}`}
                               min={MIN_ORDER_QTY}
                               max={maxQty}
-                              value={qtyText}
+                              value={text}
                               onChange={(e) => {
-                                setQtyText(e.target.value);
+                                if (multiMode) setCartText((t) => ({ ...t, [option.id]: e.target.value }));
+                                else setQtyText(e.target.value);
                                 const n = Number(e.target.value);
-                                if (Number.isInteger(n) && n >= MIN_ORDER_QTY) changeOptionQuantity(n, maxQty);
+                                if (Number.isInteger(n) && n >= MIN_ORDER_QTY) setQty(n);
                               }}
-                              onBlur={() => setQtyText(String(quantity))}
+                              onBlur={() =>
+                                multiMode
+                                  ? setCartText((t) => ({ ...t, [option.id]: String(lineQty) }))
+                                  : setQtyText(String(quantity))
+                              }
                               className="sp-input w-16 h-9 text-center text-base font-bold"
                             />
                             <button
                               type="button"
-                              aria-label="Increase quantity"
-                              disabled={quantity >= maxQty}
-                              onClick={() => changeOptionQuantity(quantity + 1, maxQty)}
+                              aria-label={`Increase quantity of ${option.name}`}
+                              disabled={lineQty >= maxQty}
+                              onClick={() => setQty(lineQty + 1)}
                               className="sp-btn-outline w-9 h-9 text-lg font-bold flex items-center justify-center transition"
                             >+</button>
                           </div>
                           <span className="text-sm font-bold" aria-live="polite">
-                            {formatNGN(option.price * quantity)}
+                            {formatNGN(option.price * lineQty)}
                           </span>
                         </div>
                       )}
@@ -744,7 +818,38 @@ export default function VariantAwareOrderForm({
           {optionsMode ? (
             <div className="sp-surface sp-rounded px-4 py-4 text-sm" aria-live="polite">
               <p className="font-semibold mb-2">Order summary</p>
-              {selectedOption ? (
+              {multiMode ? (
+                cartLines.length ? (
+                  <dl className="space-y-1.5">
+                    <div className="flex justify-between gap-4">
+                      <dt className="sp-muted shrink-0">Product</dt>
+                      <dd className="font-medium text-right">{productName}</dd>
+                    </div>
+                    {cartLines.map((l) => (
+                      <div key={l.option.id} className="flex justify-between gap-4">
+                        <dt className="sp-muted min-w-0">
+                          {l.option.name} × {l.quantity}
+                        </dt>
+                        <dd className="font-medium text-right shrink-0">{formatNGN(l.option.price * l.quantity)}</dd>
+                      </div>
+                    ))}
+                    {deliveryEnabled && (
+                      <div className="flex justify-between gap-4">
+                        <dt className="sp-muted shrink-0">Delivery</dt>
+                        <dd className="font-medium text-right">
+                          {deliveryPref === "date"
+                            ? deliveryDate && !validateDeliveryDate(deliveryDate, today)
+                              ? `Preferred date: ${formatDeliveryDate(deliveryDate)}`
+                              : "Preferred date: not chosen yet"
+                            : delivery!.asapLabel}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                ) : (
+                  <p className="sp-muted">Choose one or more options above to see your total.</p>
+                )
+              ) : selectedOption ? (
                 <dl className="space-y-1.5">
                   {([
                     ["Product", productName],
@@ -773,7 +878,9 @@ export default function VariantAwareOrderForm({
               )}
               <div className="flex justify-between font-bold text-base pt-2 border-t sp-border mt-3">
                 <span>Total (Pay on delivery)</span>
-                <span className="sp-primary-text">{selectedOption ? formatNGN(total) : "—"}</span>
+                <span className="sp-primary-text">
+                  {(multiMode ? cartLines.length > 0 : selectedOption) ? formatNGN(total) : "—"}
+                </span>
               </div>
             </div>
           ) : (
